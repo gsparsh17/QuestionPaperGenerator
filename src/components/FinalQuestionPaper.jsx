@@ -317,7 +317,7 @@ const FinalQuestionPaper = () => {
       if (question.question_type === "Fill in the Blanks") {
         pdf.setFont("helvetica", "normal");
         question.subparts.forEach((subpart, subIndex) => {
-          const subpartText = `${subpart.subpart_number}) ${subpart.question} (Answer: ${subpart.correct_answer})`;
+          const subpartText = `${subpart.subpart_number}) ${subpart.question}`;
           const subpartLines = pdf.splitTextToSize(subpartText, maxWidth - 5); // Indent subparts
           subpartLines.forEach((line) => {
             pdf.text(line, 20, yPos);
