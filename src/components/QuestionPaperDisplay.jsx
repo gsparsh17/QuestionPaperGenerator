@@ -250,7 +250,7 @@ const searchSchools = async () => {
           </div>
         );
 
-      case "Fill in the Blanks"||"FillintheBlanks"||"fillintheblanks"||"FillInTheBlanks"||"FillinTheBlanks":
+      case "Fill in the Blanks"||"FillintheBlanks"||"fillintheblanks"||"FillInTheBlanks"||"FillinTheBlanks"||"fillInTheBlanks":
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">
@@ -304,7 +304,7 @@ const searchSchools = async () => {
           </div>
         );
 
-      case "Match the Following"||"MatchTheFollowing"||"matchthefollowing":
+      case "Match the Following"||"MatchTheFollowing"||"matchthefollowing"||"matchTheFollowing":
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">

@@ -257,10 +257,10 @@ const FinalQuestionPaper = () => {
 
   const handleDownloadPDF = () => {
     const pdf = new jsPDF("p", "mm", "a4");
-
+  
     // Set default font size
     pdf.setFontSize(12);
-
+  
     // Add header
     pdf.setFont("helvetica", "bold");
     pdf.text(schoolName, 105, 10, { align: "center" });
@@ -269,42 +269,65 @@ const FinalQuestionPaper = () => {
     pdf.text(`Subject: ${subject || "Unknown"}`, 105, 20, { align: "center" });
     pdf.text(`Maximum Marks: ${totalMarks}`, 5, 20, { align: "left" });
     pdf.text(`Time: ${totalDuration}`, 205, 20, { align: "right" });
-
+  
     // Add a grey line below the header
     pdf.setDrawColor(200); // Grey color
     pdf.setLineWidth(0.5); // Line thickness
     pdf.line(5, 25, 205, 25); // Draw a line from (x1, y1) to (x2, y2)
-
+  
     // Add questions
     let yPos = 32; // Starting Y position for questions
     const maxWidth = 180; // Maximum width for text (A4 page width - margins)
     const lineHeight = 5; // Height of each line
-
+    const bottomMargin = 5; // Bottom margin in mm
+  
     paper.questions.forEach((question, index) => {
-      // Add question number and text
-      pdf.setFont("helvetica", "bold");
+      // Check if the current question will exceed the bottom margin
       const questionText = `${question.question_number}. ${question.question}`;
       const questionLines = pdf.splitTextToSize(questionText, maxWidth);
+      const questionHeight = questionLines.length * lineHeight;
+  
+      if (yPos + questionHeight > 280 - bottomMargin) {
+        pdf.addPage(); // Add a new page if the content exceeds the page height
+        yPos = 20; // Reset Y position for the new page
+      }
+  
+      // Add question number and text
+      pdf.setFont("helvetica", "bold");
       questionLines.forEach((line) => {
         pdf.text(line, 15, yPos);
         yPos += lineHeight;
       });
-
+  
       // Handle MCQ options
       if (question.question_type === "MCQ") {
         pdf.setFont("helvetica", "normal");
         question.subparts.forEach((subpart, subIndex) => {
           const subpartText = `${subpart.subpart_number}) ${subpart.question}`;
           const subpartLines = pdf.splitTextToSize(subpartText, maxWidth - 5); // Indent subparts
+          const subpartHeight = subpartLines.length * lineHeight;
+  
+          if (yPos + subpartHeight > 280 - bottomMargin) {
+            pdf.addPage();
+            yPos = 20;
+          }
+  
           subpartLines.forEach((line) => {
             pdf.text(line, 20, yPos);
             yPos += lineHeight;
           });
-
+  
           // Add options
           subpart.options.forEach((option, optIndex) => {
             const optionText = `${String.fromCharCode(65 + optIndex)}. ${option}`;
             const optionLines = pdf.splitTextToSize(optionText, maxWidth - 10); // Further indent options
+            const optionHeight = optionLines.length * lineHeight;
+  
+            if (yPos + optionHeight > 280 - bottomMargin) {
+              pdf.addPage();
+              yPos = 20;
+            }
+  
             optionLines.forEach((line) => {
               pdf.text(line, 25, yPos);
               yPos += lineHeight;
@@ -312,39 +335,60 @@ const FinalQuestionPaper = () => {
           });
         });
       }
-
+  
       // Handle Fill in the Blanks with subparts
       if (question.question_type === "Fill in the Blanks") {
         pdf.setFont("helvetica", "normal");
         question.subparts.forEach((subpart, subIndex) => {
           const subpartText = `${subpart.subpart_number}) ${subpart.question}`;
           const subpartLines = pdf.splitTextToSize(subpartText, maxWidth - 5); // Indent subparts
+          const subpartHeight = subpartLines.length * lineHeight;
+  
+          if (yPos + subpartHeight > 280 - bottomMargin) {
+            pdf.addPage();
+            yPos = 20;
+          }
+  
           subpartLines.forEach((line) => {
             pdf.text(line, 20, yPos);
             yPos += lineHeight;
           });
         });
       }
-
+  
       // Handle Match the Following
       if (question.question_type === "Match the Following") {
         pdf.setFont("helvetica", "normal");
-        pdf.text("Match the following terms with their definitions:", 15, yPos);
+        const matchText = "Match the following terms with their definitions:";
+        const matchHeight = pdf.splitTextToSize(matchText, maxWidth).length * lineHeight;
+  
+        if (yPos + matchHeight > 280 - bottomMargin) {
+          pdf.addPage();
+          yPos = 20;
+        }
+  
+        pdf.text(matchText, 15, yPos);
         yPos += lineHeight + 2;
-
+  
         // Draw table for terms and definitions
         question.pairs.forEach((pair, pairIndex) => {
           const termText = `${pair.term}:`;
           const definitionText = pair.definition;
           const termLines = pdf.splitTextToSize(termText, maxWidth / 2 - 10);
           const definitionLines = pdf.splitTextToSize(definitionText, maxWidth / 2 - 10);
-
+          const pairHeight = Math.max(termLines.length, definitionLines.length) * lineHeight;
+  
+          if (yPos + pairHeight > 280 - bottomMargin) {
+            pdf.addPage();
+            yPos = 20;
+          }
+  
           // Draw term
           termLines.forEach((line) => {
             pdf.text(line, 20, yPos);
             yPos += lineHeight - 1;
           });
-
+  
           // Draw definition
           definitionLines.forEach((line) => {
             pdf.text(line, 110, yPos - lineHeight * termLines.length);
@@ -352,18 +396,22 @@ const FinalQuestionPaper = () => {
           });
         });
       }
-
+  
       // Add marks
       pdf.setFont("helvetica", "bold");
-      pdf.text(`[Marks: ${question.marks}]`, 180, yPos, { align: "right" });
-
-      yPos += 8; // Add space between questions
-      if (yPos > 280) {
-        pdf.addPage(); // Add a new page if the content exceeds the page height
-        yPos = 20; // Reset Y position for the new page
+      const marksText = `[Marks: ${question.marks}]`;
+      const marksHeight = pdf.splitTextToSize(marksText, maxWidth).length * lineHeight;
+  
+      if (yPos + marksHeight > 280 - bottomMargin) {
+        pdf.addPage();
+        yPos = 20;
       }
+  
+      pdf.text(marksText, 180, yPos, { align: "right" });
+  
+      yPos += 8; // Add space between questions
     });
-
+  
     // Save the PDF
     pdf.save("question-paper.pdf");
   };
