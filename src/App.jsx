@@ -12,6 +12,7 @@ import QuestionPaperGenerator from "./components/QuestionPeperGenerator";
 import QuestionPaperDisplay from "./components/QuestionPaperDisplay";
 import FinalQuestionPaper from "./components/FinalQuestionPaper";
 import Unauthorized from "./components/Unauthorised";
+import SchoolDashboard from "./components/SchoolDashboard";
 const App = () => {
   return (
     <Router>
@@ -33,6 +34,7 @@ const App = () => {
         <Route path="/activities" element={<Activities />} />
         <Route path="/question-paper-generator" element={<QuestionPaperGenerator/>} />
         <Route path="/final-question-paper" element={<FinalQuestionPaper/>} />
+        <Route path="/school-dashboard/:uniqueId" element={<SchoolDashboard />} />
         <Route path="/question-paper-display" element={<QuestionPaperDisplay />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/activities/:activityId" element={<ActivityDetails/>} />

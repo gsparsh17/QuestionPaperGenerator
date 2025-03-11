@@ -248,10 +248,12 @@ import Sidebar1 from "./Sidebar1";
 import RegisterSchool from "./RegisterSchool";
 import SearchSchools from "./SearchSchools";
 import NotificationsBar from "./NotificationsBar";
+import { FaBars } from "react-icons/fa";
 
 const AdminDashboard = () => {
   const [schools, setSchools] = useState([]);
   const [activeSection, setActiveSection] = useState("register");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchSchools();
@@ -270,13 +272,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-black">
-      <Sidebar1 setActiveSection={setActiveSection} />
-      <div className="flex-1 p-8 ml-64">
+      {/* Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-slate-300 p-2 lg:pt-2 pt-10 transform transition-transform duration-200 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0 lg:static`}
+      >
+        <Sidebar1 setActiveSection={setActiveSection} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 lg:p-8 lg:ml-32">
+        {/* Hamburger Menu Button (Visible on Mobile) */}
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-gray-700 rounded-lg text-slate-300 hover:bg-gray-600 transition duration-200"
+        >
+          <FaBars className="text-xl" />
+        </button>
+
+        {/* Render Active Section */}
         {activeSection === "register" && <RegisterSchool fetchSchools={fetchSchools} />}
         {activeSection === "search" && <SearchSchools schools={schools} />}
       </div>
+
+      {/* Notifications Bar */}
       <NotificationsBar />
     </div>
   );
