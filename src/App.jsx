@@ -13,6 +13,8 @@ import QuestionPaperDisplay from "./components/QuestionPaperDisplay";
 import FinalQuestionPaper from "./components/FinalQuestionPaper";
 import Unauthorized from "./components/Unauthorised";
 import SchoolDashboard from "./components/SchoolDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 const App = () => {
   return (
     <Router>
@@ -26,8 +28,13 @@ const App = () => {
             </div>
           } 
         />
-        <Route path="/main" element={<MainContent />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/main" element={
+            <div className="flex animate-fadeIn duration-1000">
+              <Sidebar />
+              <MainContent />
+            </div>
+          } />
+        <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/unauthorized" element={<Unauthorized />} />

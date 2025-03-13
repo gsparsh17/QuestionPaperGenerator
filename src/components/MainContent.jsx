@@ -25,7 +25,7 @@ import WebSummarizer from "./WebSummarizer"; // Corrected import
 // Firebase imports
 import { auth, db } from "../firebaseConfig";
 import { doc, collection, addDoc, Timestamp } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 const MainContent = () => {
   const {
@@ -83,6 +83,17 @@ const MainContent = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // Check if the user has been prompted to log in after a reload
+  useEffect(() => {
+    const hasBeenPrompted = localStorage.getItem('hasBeenPrompted');
+    if (!hasBeenPrompted) {
+      signOut(auth).then(() => {
+        localStorage.setItem('hasBeenPrompted', 'true');
+        navigate('/login');
+      });
+    }
+  }, [navigate]);
 
   const logActivity = async (activity) => {
     if (!user) return; // Only log if user is authenticated

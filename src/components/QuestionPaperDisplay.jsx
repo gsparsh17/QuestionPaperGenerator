@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaPlus, FaSave } from "react-icons/fa";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { FaEdit, FaTrash, FaPlus, FaSave, FaPrint } from "react-icons/fa";
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig"; // Adjust the import path as needed
+import '../index.css';
 
 const QuestionPaperDisplay = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { paper } = location.state || { paper: null };
-  const [editedPaper, setEditedPaper] = useState(paper);
+  const { paper: locationPaper } = location.state || { paper: null };
+  const [paper, setPaper] = useState(locationPaper);
+  const [editedPaper, setEditedPaper] = useState(locationPaper);
   const [editIndex, setEditIndex] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
   const [schoolName, setSchoolName] = useState("");
@@ -18,55 +20,74 @@ const QuestionPaperDisplay = () => {
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [teachers, setTeachers] = useState([]); // List of teachers for approval
+  const [selectedTeacher, setSelectedTeacher] = useState(""); // Selected teacher for approval
+  const [currentStatus, setCurrentStatus] = useState("unapproved"); // Paper status
+
+  // Fetch paperid from URL
+  const queryParams = new URLSearchParams(location.search);
+  const paperid = queryParams.get("paperid");
+
+  // Fetch paper data from Firebase if not available in location.state
+  useEffect(() => {
+    if (!paper && paperid) {
+      const fetchPaper = async () => {
+        setLoading(true);
+        try {
+          const paperRef = doc(db, "questionPapers", paperid);
+          const paperDoc = await getDoc(paperRef);
+          if (paperDoc.exists()) {
+            const paperData = paperDoc.data();
+            setPaper(paperData);
+            setEditedPaper(paperData);
+          } else {
+            console.error("No such document!");
+          }
+        } catch (error) {
+          console.error("Error fetching paper:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchPaper();
+    }
+  }, [paper, paperid]);
 
   // Fetch schoolId from URL
-  const queryParams = new URLSearchParams(location.search);
   const schoolId = location.state?.schoolId || queryParams.get("schoolId");
-  console.log("schoolId:", schoolId);
 
-  // Fetch school name from Firebase
-//   useEffect(() => {
-//     const fetchSchoolName = async () => {
-//       if (schoolId) {
-//         const schoolDocRef = doc(db, "schools", schoolId);
-//         const schoolDoc = await getDoc(schoolDocRef);
-//         if (schoolDoc.exists()) {
-//           setSchoolName(schoolDoc.data().name);
-//         } else {
-//           console.error("School not found");
-//         }
-//       }
-//     };
-
-//     fetchSchoolName();
-//   }, [schoolId]);
-const searchSchools = async () => {
+  // Fetch school name and teachers from Firebase
+  const searchSchools = async () => {
     setLoading(true);
 
     try {
-      // Create a query to search for documents in the "schools" collection
+      // Fetch school details
       const schoolsRef = collection(db, "schools");
-      const q = query(
-        schoolsRef,
-        where("uniqueId", "==", schoolId)
-      );
-
-      // Execute the query
+      const q = query(schoolsRef, where("uniqueId", "==", schoolId));
       const querySnapshot = await getDocs(q);
 
-      // Extract the documents
       const schoolsData = [];
       querySnapshot.forEach((doc) => {
         schoolsData.push({ id: doc.id, ...doc.data() });
       });
 
-      // Update state with the results
       setSchools(schoolsData);
-      setSchoolName(schools[0].schoolName);
-      console.log(schoolName)
-      console.log("Schools found:", schoolsData);
+      setSchoolName(schoolsData[0]?.schoolName || "");
+
+      // Fetch teachers associated with the school
+      const teachersRef = collection(db, "teachers");
+      const teachersQuery = query(teachersRef, where("schoolId", "==", schoolId));
+      const teachersSnapshot = await getDocs(teachersQuery);
+
+      const teachersData = [];
+      teachersSnapshot.forEach((doc) => {
+        teachersData.push({ id: doc.id, ...doc.data() });
+      });
+
+      setTeachers(teachersData);
     } catch (error) {
-      console.error("Error searching schools:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
@@ -76,12 +97,89 @@ const searchSchools = async () => {
     searchSchools(); // Trigger the search when the component mounts
   }, []);
 
+  // Save the question paper
+  const handleSave = async () => {
+    try {
+      const paperData = {
+        schoolId,
+        schoolName,
+        subject,
+        examType,
+        class: editedPaper.class, // Add class
+        totalDuration,
+        questions: editedPaper.questions,
+        totalMarks: calculateTotalMarks(),
+        status: currentStatus, // Set status to "unapproved"
+        createdAt: new Date(),
+      };
+  
+      // Save to Firestore
+      const docRef = await addDoc(collection(db, "questionPapers"), paperData);
+      console.log("Question paper saved with ID:", docRef.id);
+      navigate(`/question-paper-display?paperid=${docRef.id}`);
+      alert("Question paper saved successfully!");
+    } catch (error) {
+      console.error("Error saving question paper:", error);
+      alert("Failed to save question paper.");
+    }
+  };
 
-  if (!editedPaper) {
-    return <div className="text-center mt-10 text-gray-700">No question paper found.</div>;
-  }
+  // Send for teacher approval
+  const handleSendForApproval = async () => {
+    if (!selectedTeacher) {
+      alert("Please select a teacher for approval.");
+      return;
+    }
+  
+    try {
+      // Generate a unique URL for the teacher
+      const editLink = `${window.location.origin}/question-paper-display?paperid=${schoolId}`;
+  
+      // Update the paper status and assign to the teacher
+      const paperData = {
+        schoolId,
+        schoolName,
+        subject,
+        examType,
+        class: editedPaper.class, // Add class
+        totalDuration,
+        questions: editedPaper.questions,
+        totalMarks: calculateTotalMarks(),
+        status: "pending", // Set status to "pending"
+        assignedTeacher: selectedTeacher,
+        editLink,
+        createdAt: new Date(),
+      };
+  
+      const docRef = await addDoc(collection(db, "questionPapers"), paperData);
+      console.log("Question paper sent for approval with ID:", docRef.id);
+      alert("Question paper sent for approval!");
+    } catch (error) {
+      console.error("Error sending for approval:", error);
+      alert("Failed to send for approval.");
+    }
+  };
 
-  // Calculate total marks dynamically
+  // Direct print and preview
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handlePreview = () => {
+    navigate("/final-question-paper", {
+      state: {
+        paper: editedPaper,
+        totalMarks: calculateTotalMarks(),
+        schoolName,
+        examType,
+        subject,
+        class: editedPaper.class, // Add class
+        totalDuration,
+      },
+    });
+  };
+
+  // Calculate total marks
   const calculateTotalMarks = () => {
     return editedPaper.questions.reduce((total, question) => total + question.marks, 0);
   };
@@ -134,10 +232,6 @@ const searchSchools = async () => {
 
   const handleEditClick = (index) => {
     setEditIndex(index);
-  };
-
-  const handleSave = () => {
-    setEditIndex(null); // Exit edit mode
   };
 
   const handleDelete = (index) => {
@@ -422,71 +516,81 @@ const searchSchools = async () => {
 
       {/* Header Section */}
       <div className="border p-5 rounded-lg shadow-lg bg-gray-100">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">School: {schoolName}</h2>
-          {isEditingHeader ? (
-            <button
-              onClick={handleHeaderSave}
-              className="bg-green-600 text-white py-1 px-3 rounded flex items-center"
-            >
-              <FaSave className="mr-2" /> Save
-            </button>
-          ) : (
-            <button
-              onClick={handleHeaderEdit}
-              className="bg-yellow-500 text-white py-1 px-3 rounded flex items-center"
-            >
-              <FaEdit className="mr-2" /> Edit
-            </button>
-          )}
-        </div>
-        {isEditingHeader ? (
-          <div className="space-y-4">
-            <div>
-              <label className="font-semibold text-gray-800">School Name:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded text-gray-900"
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-gray-800">Exam Type:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded text-gray-900"
-                value={examType}
-                onChange={(e) => setExamType(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-gray-800">Total Duration:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded text-gray-900"
-                value={totalDuration}
-                onChange={(e) => setTotalDuration(e.target.value)}
-              />
-            </div>
-            <div>
-                <label className="font-semibold text-gray-800">Subject:</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded text-gray-900"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-            </div>
-            </div>
-        ) : (
-          <div>
-            <p className="text-gray-700">Exam Type: {examType}</p>
-            <p className="text-gray-700">Subject: {subject}</p>
-            <p className="text-gray-700">Total Duration: {totalDuration}</p>
-          </div>
-        )}
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl font-semibold">School: {schoolName}</h2>
+    {isEditingHeader ? (
+      <button
+        onClick={handleHeaderSave}
+        className="bg-green-600 text-white py-1 px-3 rounded flex items-center"
+      >
+        <FaSave className="mr-2" /> Save
+      </button>
+    ) : (
+      <button
+        onClick={handleHeaderEdit}
+        className="bg-yellow-500 text-white py-1 px-3 rounded flex items-center"
+      >
+        <FaEdit className="mr-2" /> Edit
+      </button>
+    )}
+  </div>
+  {isEditingHeader ? (
+    <div className="space-y-4">
+      <div>
+        <label className="font-semibold text-gray-800">School Name:</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded text-gray-900"
+          value={schoolName}
+          onChange={(e) => setSchoolName(e.target.value)}
+        />
       </div>
+      <div>
+        <label className="font-semibold text-gray-800">Exam Type:</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded text-gray-900"
+          value={examType}
+          onChange={(e) => setExamType(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="font-semibold text-gray-800">Total Duration:</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded text-gray-900"
+          value={totalDuration}
+          onChange={(e) => setTotalDuration(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="font-semibold text-gray-800">Subject:</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded text-gray-900"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="font-semibold text-gray-800">Class:</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded text-gray-900"
+          value={editedPaper.class}
+          onChange={(e) => setEditedPaper({ ...editedPaper, class: e.target.value })}
+        />
+      </div>
+    </div>
+  ) : (
+    <div>
+      <p className="text-gray-700">Exam Type: {examType}</p>
+      <p className="text-gray-700">Subject: {subject}</p>
+      <p className="text-gray-700">Class: {editedPaper.class}</p>
+      <p className="text-gray-700">Total Duration: {totalDuration}</p>
+    </div>
+  )}
+</div>
 
       {/* Questions Section */}
       <div className="mt-6">
@@ -512,7 +616,7 @@ const searchSchools = async () => {
               <button
                 onClick={() => handleDelete(index)}
                 className="bg-red-600 text-white py-1 px-3 rounded flex items-center"
-              >
+                >
                 <FaTrash className="mr-2" /> Delete
               </button>
             </div>
@@ -528,24 +632,52 @@ const searchSchools = async () => {
         <FaPlus className="mr-2" /> Add Question
       </button>
 
-      {/* Warning Message */}
-      {showWarning && (
-        <div className="mt-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
-          <p className="font-semibold">Warning:</p>
-          <p>
-            The total marks ({calculateTotalMarks()}) do not match the desired total marks ({editedPaper.totalMarks}).
-          </p>
-          <p>Please adjust the marks of the questions, add new questions, or delete existing questions to match the desired total marks.</p>
-        </div>
-      )}
-
-      {/* Confirm Button */}
+      {/* Save Button */}
       <button
-        onClick={handleConfirm}
-        className="bg-green-600 text-white py-2 px-4 rounded-lg mt-6 flex items-center"
+        onClick={handleSave}
+        className="bg-green-600 text-white py-2 px-4 rounded-lg mt-6 flex items-center mr-4"
       >
-        Confirm & Preview
+        <FaSave className="mr-2" /> Save Paper
       </button>
+
+      {/* Send for Approval */}
+      <div className="mt-6">
+        <label className="font-semibold text-gray-800">Send for Approval:</label>
+        <select
+          className="w-full p-2 border rounded text-gray-900 mt-2"
+          value={selectedTeacher}
+          onChange={(e) => setSelectedTeacher(e.target.value)}
+        >
+          <option value="">Select a teacher</option>
+          {teachers.map((teacher) => (
+            <option key={teacher.id} value={teacher.id}>
+              {teacher.name}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleSendForApproval}
+          className="bg-purple-600 text-white py-2 px-4 rounded-lg mt-4 flex items-center"
+        >
+          Send for Approval
+        </button>
+      </div>
+
+      {/* Print and Preview Buttons */}
+      <div className="mt-6">
+        <button
+          onClick={handlePrint}
+          className="bg-blue-600 text-white py-2 px-4 m-2 rounded-lg flex items-center mr-4"
+        >
+          <FaPrint className="mr-2" /> Print Paper
+        </button>
+        <button
+          onClick={handlePreview}
+          className="bg-green-600 text-white py-2 m-2 px-4 rounded-lg flex items-center"
+        >
+          Preview Paper
+        </button>
+      </div>
     </div>
   );
 };

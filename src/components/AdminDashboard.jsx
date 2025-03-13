@@ -242,22 +242,38 @@
 // export default AdminDashboard;
 
 import React, { useState, useEffect } from "react";
-import { db } from "../firebaseConfig";
+import { db, auth } from "../firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import Sidebar1 from "./Sidebar1";
 import RegisterSchool from "./RegisterSchool";
 import SearchSchools from "./SearchSchools";
 import NotificationsBar from "./NotificationsBar";
+import DefaultDashboard from "./DefaultDashboard";
+import LibraryPage from "./LibraryPage"; // Import the LibraryPage
+import QuestionPaperBank from "./QuestionPaperBank"; // Import the QuestionPaperBank
 import { FaBars } from "react-icons/fa";
 
 const AdminDashboard = () => {
   const [schools, setSchools] = useState([]);
-  const [activeSection, setActiveSection] = useState("register");
+  const [activeSection, setActiveSection] = useState("dashboard"); // Set default to "dashboard"
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchSchools();
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+        fetchSchools();
+      } else {
+        navigate("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const fetchSchools = async () => {
     try {
@@ -276,6 +292,19 @@ const AdminDashboard = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-black">
       {/* Sidebar */}
@@ -284,11 +313,11 @@ const AdminDashboard = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 lg:static`}
       >
-        <Sidebar1 setActiveSection={setActiveSection} />
+        <Sidebar1 setActiveSection={setActiveSection} handleLogout={handleLogout} />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 lg:p-8 lg:ml-32">
+      <div className="flex-1 p-4 lg:p-8 lg:ml-16">
         {/* Hamburger Menu Button (Visible on Mobile) */}
         <button
           onClick={toggleSidebar}
@@ -298,8 +327,11 @@ const AdminDashboard = () => {
         </button>
 
         {/* Render Active Section */}
+        {activeSection === "dashboard" && <DefaultDashboard />}
         {activeSection === "register" && <RegisterSchool fetchSchools={fetchSchools} />}
         {activeSection === "search" && <SearchSchools schools={schools} />}
+        {activeSection === "library" && <LibraryPage />} {/* Add LibraryPage */}
+        {activeSection === "questionPaperBank" && <QuestionPaperBank />} {/* Add QuestionPaperBank */}
       </div>
 
       {/* Notifications Bar */}

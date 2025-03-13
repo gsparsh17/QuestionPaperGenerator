@@ -27,7 +27,7 @@ const Sidebar = () => {
       } else {
         setUser(null);
         setActivities([]);
-        navigate("/Maincontent");
+        navigate("/main");
       }
     });
 

@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaUpload, FaFilePdf, FaDownload } from "react-icons/fa";
+import { FaUpload, FaSearch, FaFilter } from "react-icons/fa";
 import * as pdfjsLib from "pdfjs-dist";
+import { getFirestore, collection, getDocs } from "firebase/firestore"; // Firebase Firestore
 
 // Manually set the worker file path
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-console.log("PDF.js version:", pdfjsLib.version);
-console.log("Worker script:", pdfjsLib.GlobalWorkerOptions.workerSrc);
-
 const QuestionPaperGenerator = () => {
   const [pdfFiles, setPdfFiles] = useState([]);
+  const [uploadedBooks, setUploadedBooks] = useState([]); // List of uploaded books
+  const [selectedBookUrl, setSelectedBookUrl] = useState(""); // Selected book URL
+  const [searchQuery, setSearchQuery] = useState(""); // Search query
+  const [filters, setFilters] = useState({ subject: "", class: "" }); // Filters for subject and class
+  const [filteredBooks, setFilteredBooks] = useState([]); // Books filtered by search and filters
   const [difficulty, setDifficulty] = useState("medium");
   const [totalMarks, setTotalMarks] = useState(100);
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [chapters, setChapters] = useState("");
   const [loading, setLoading] = useState(false);
-  const [generatedPaper, setGeneratedPaper] = useState(null);
   const [questionTypes, setQuestionTypes] = useState({
     mcq: false,
     shortAnswer: false,
@@ -40,13 +42,71 @@ const QuestionPaperGenerator = () => {
     }
   }, [location, navigate]);
 
+  // Fetch uploaded books from Firestore
+  useEffect(() => {
+    const fetchUploadedBooks = async () => {
+      const db = getFirestore();
+      const booksCollection = collection(db, "books"); // Replace with your Firestore collection name
+      const booksSnapshot = await getDocs(booksCollection);
+      const booksList = booksSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setUploadedBooks(booksList);
+      setFilteredBooks(booksList); // Initialize filtered books with all books
+    };
+
+    fetchUploadedBooks();
+  }, []);
+
+  // Handle search and filters
+  useEffect(() => {
+    const filtered = uploadedBooks.filter((book) => {
+      const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            book.author.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesSubject = filters.subject ? book.subject === filters.subject : true;
+      const matchesClass = filters.class ? book.class === filters.class : true;
+
+      return matchesSearch && matchesSubject && matchesClass;
+    });
+
+    setFilteredBooks(filtered);
+  }, [searchQuery, filters, uploadedBooks]);
+
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     setPdfFiles(files);
+    setSelectedBookUrl(""); // Clear selected book URL when a new file is uploaded
   };
 
-  const extractTextFromPDF = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
+  const handleBookSelection = (url) => {
+    setSelectedBookUrl(url);
+    setPdfFiles([]); // Clear uploaded files when a book is selected
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const extractTextFromPDF = async (fileOrUrl) => {
+    let arrayBuffer;
+
+    if (fileOrUrl instanceof File) {
+      arrayBuffer = await fileOrUrl.arrayBuffer();
+    } else {
+      const response = await fetch(fileOrUrl);
+      arrayBuffer = await response.arrayBuffer();
+    }
+
     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
     let text = "";
 
@@ -60,17 +120,23 @@ const QuestionPaperGenerator = () => {
   };
 
   const handleGeneratePaper = async () => {
-    if (pdfFiles.length === 0) {
-      alert("Please upload at least one PDF file.");
+    if (pdfFiles.length === 0 && !selectedBookUrl) {
+      alert("Please upload a file or select a book.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const pdfTexts = await Promise.all(
-        pdfFiles.map(async (file) => await extractTextFromPDF(file))
-      );
+      let pdfTexts;
+
+      if (pdfFiles.length > 0) {
+        // Extract text from uploaded files
+        pdfTexts = await Promise.all(pdfFiles.map((file) => extractTextFromPDF(file)));
+      } else {
+        // Extract text from the selected book URL
+        pdfTexts = [await extractTextFromPDF(selectedBookUrl)];
+      }
 
       const combinedPDFText = pdfTexts.join("\n");
 
@@ -202,8 +268,6 @@ const QuestionPaperGenerator = () => {
 
       const response = await fetchGeminiAPI(prompt);
 
-      console.log("API Response:", response); // Debugging line
-
       if (!response?.candidates || response.candidates.length === 0) {
         throw new Error("Invalid response format from API");
       }
@@ -214,33 +278,10 @@ const QuestionPaperGenerator = () => {
         throw new Error("Generated response is empty.");
       }
 
-      // Attempt to parse the JSON response
-      try {
-        // Clean up response: Remove Markdown formatting if present
-        const cleanText = questionPaperText.replace(/```json|```/g, "").trim();
+      const cleanText = questionPaperText.replace(/```json|```/g, "").trim();
+      const parsedData = JSON.parse(cleanText);
 
-        // Parse the cleaned JSON text
-        const parsedData = JSON.parse(cleanText);
-
-        // Validate the total marks
-        const totalGeneratedMarks = parsedData.questions.reduce(
-          (total, question) => total + question.marks,
-          0
-        );
-
-        // if (totalGeneratedMarks !== totalMarks) {
-        //   throw new Error(
-        //     `Generated paper has ${totalGeneratedMarks} marks, but expected ${totalMarks}.`
-        //   );
-        // }
-
-        // Pass schoolId to the QuestionPaperDisplay page
-        navigate("/question-paper-display", { state: { paper: parsedData, schoolId } });
-      } catch (jsonError) {
-        console.error("Error parsing generated JSON:", jsonError);
-        alert("Generated response is not valid JSON or marks are incorrect.");
-      }
-
+      navigate("/question-paper-display", { state: { paper: parsedData, schoolId } });
     } catch (error) {
       console.error("Error generating question paper:", error);
       alert("Failed to generate question paper. Please try again.");
@@ -293,7 +334,6 @@ const QuestionPaperGenerator = () => {
     }));
   };
 
-  // If schoolId is missing, display unauthorized page
   if (!schoolId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
@@ -343,6 +383,72 @@ const QuestionPaperGenerator = () => {
                   className="hidden"
                 />
               </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-slate-300 text-sm font-bold mb-2">
+              Search and Select an Uploaded Book
+            </label>
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="flex items-center bg-gray-800 rounded-lg p-2">
+                <FaSearch className="text-slate-400 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Search by title or author"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-full bg-transparent text-slate-300 focus:outline-none"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-4">
+                <select
+                  name="subject"
+                  value={filters.subject}
+                  onChange={handleFilterChange}
+                  className="w-full p-2 bg-gray-800 rounded-lg text-slate-300"
+                >
+                  <option value="">Filter by Subject</option>
+                  <option value="Math">Math</option>
+                  <option value="Science">Science</option>
+                  <option value="History">History</option>
+                  {/* Add more subjects as needed */}
+                </select>
+
+                <select
+                  name="class"
+                  value={filters.class}
+                  onChange={handleFilterChange}
+                  className="w-full p-2 bg-gray-800 rounded-lg text-slate-300"
+                >
+                  <option value="">Filter by Class</option>
+                  <option value="Class 6">Class 6</option>
+                  <option value="Class 7">Class 7</option>
+                  <option value="Class 8">Class 8</option>
+                  {/* Add more classes as needed */}
+                </select>
+              </div>
+
+              {/* Book List */}
+              <div className="max-h-48 overflow-y-auto">
+                {filteredBooks.map((book) => (
+                  <div
+                    key={book.id}
+                    onClick={() => handleBookSelection(book.fileUrl)}
+                    className={`p-2 m-2 cursor-pointer hover:bg-gray-700 rounded-lg ${
+                      selectedBookUrl === book.fileUrl ? "bg-indigo-600" : "bg-gray-800"
+                    }`}
+                  >
+                    <p className="text-slate-300">{book.title}</p>
+                    <p className="text-sm text-slate-400">
+                      {book.author} - {book.class} - {book.subject}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
