@@ -347,11 +347,11 @@ const QuestionPaperGenerator = () => {
 
   return (
     <div className="flex-1 min-h-screen relative bg-gradient-to-br from-gray-900 to-black pb-9">
-      <div className="flex justify-between w-full text-xl p-5 text-slate-300 sticky top-0 z-40 bg-gray-900/70">
+      {/* <div className="flex justify-between w-full text-xl p-5 text-slate-300 sticky top-0 z-40 bg-gray-900/70">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent text-white ml-4 md:ml-16">
           Question Paper Generator
         </h1>
-      </div>
+      </div> */}
 
       <div className="max-w-[900px] mx-auto max-md:mt-20 px-5">
         <div className="text-[56px] text-slate-300 font-semibold max-md:text-[25px]">

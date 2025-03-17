@@ -1,7 +1,39 @@
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
+const subjects = [
+  "Mathematics",
+  "Science",
+  "Social Science",
+  "English",
+  "Hindi",
+  "Sanskrit",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "History",
+  "Geography",
+  "Civics",
+  "Economics",
+  "Business Studies",
+  "Accountancy",
+  "Computer Science",
+  "Information Technology",
+  "Physical Education",
+  "Environmental Studies",
+  "General Knowledge",
+  "Art and Craft",
+  "Music",
+  "Dance",
+  "Home Science",
+  "Psychology",
+  "Sociology",
+  "Political Science",
+  "Biotechnology",
+  "Engineering Graphics",
+  "Entrepreneurship"
+];
 const AddTeacher = ({ fetchData }) => {
   const [teacherName, setTeacherName] = useState("");
   const [teacherEmail, setTeacherEmail] = useState("");
@@ -15,7 +47,7 @@ const AddTeacher = ({ fetchData }) => {
       try {
         const querySnapshot = await getDocs(collection(db, "schools"));
         const schoolList = querySnapshot.docs.map((doc) => ({
-          id: doc.id, // Firestore document ID (not used for saving)
+          id: doc.id, // Firestore document ID
           uniqueId: doc.data().uniqueId, // Unique school ID
           schoolName: doc.data().schoolName,
         }));
@@ -35,16 +67,29 @@ const AddTeacher = ({ fetchData }) => {
     }
 
     try {
+      // Step 1: Add the teacher to the "teachers" collection
       const teacherRef = await addDoc(collection(db, "teachers"), {
         name: teacherName,
         email: teacherEmail,
         subject: teacherSubject,
-        schoolId: teacherSchoolId, // Save uniqueId instead of doc.id
+        schoolId: teacherSchoolId, // Save the uniqueId of the school
       });
 
-      const schoolRef = doc(db, "schools", teacherSchoolId);
+      // Step 2: Fetch the school document reference using the uniqueId
+      const schoolsQuery = query(collection(db, "schools"), where("uniqueId", "==", teacherSchoolId));
+      const schoolSnapshot = await getDocs(schoolsQuery);
+
+      if (schoolSnapshot.empty) {
+        throw new Error("School not found with the provided uniqueId.");
+      }
+
+      const schoolDoc = schoolSnapshot.docs[0];
+      const schoolRef = doc(db, "schools", schoolDoc.id);
+
+      // Step 3: Update the school document to include the new teacher's ID
+      const currentTeachers = schoolDoc.data().teachers || []; // Get the current teachers array
       await updateDoc(schoolRef, {
-        teachers: [...(schools.find((s) => s.id === teacherSchoolId)?.teachers || []), teacherRef.id],
+        teachers: [...currentTeachers, teacherRef.id], // Append the new teacher's ID
       });
 
       console.log("Teacher added with ID:", teacherRef.id);
@@ -83,14 +128,21 @@ const AddTeacher = ({ fetchData }) => {
             className="p-2 bg-gray-600 text-slate-100 rounded-lg focus:outline-none"
             required
           />
-          <input
-            type="text"
-            placeholder="Subject"
+          <div>
+          <select
             value={teacherSubject}
             onChange={(e) => setTeacherSubject(e.target.value)}
-            className="p-2 bg-gray-600 text-slate-100 rounded-lg focus:outline-none"
+            className="w-full p-2 bg-gray-600 text-slate-100 rounded-lg focus:outline-none"
             required
-          />
+          >
+            <option value="">Select Subject</option>
+            {subjects.map((subject, index) => (
+              <option key={index} value={subject}>
+                {subject}
+              </option>
+            ))}
+          </select>
+        </div>
           <select
             value={teacherSchoolId}
             onChange={(e) => setTeacherSchoolId(e.target.value)}
