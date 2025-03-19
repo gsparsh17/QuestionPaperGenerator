@@ -251,13 +251,13 @@ import RegisterSchool from "./RegisterSchool";
 import SearchSchools from "./SearchSchools";
 import NotificationsBar from "./NotificationsBar";
 import DefaultDashboard from "./DefaultDashboard";
-import LibraryPage from "./LibraryPage"; // Import the LibraryPage
-import QuestionPaperBank from "./QuestionPaperBank"; // Import the QuestionPaperBank
+import LibraryPage from "./LibraryPage";
+import QuestionPaperBank from "./QuestionPaperBank";
 import { FaBars } from "react-icons/fa";
 
 const AdminDashboard = () => {
   const [schools, setSchools] = useState([]);
-  const [activeSection, setActiveSection] = useState("dashboard"); // Set default to "dashboard"
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
@@ -330,8 +330,8 @@ const AdminDashboard = () => {
         {activeSection === "dashboard" && <DefaultDashboard />}
         {activeSection === "register" && <RegisterSchool fetchSchools={fetchSchools} />}
         {activeSection === "search" && <SearchSchools schools={schools} />}
-        {activeSection === "library" && <LibraryPage />} {/* Add LibraryPage */}
-        {activeSection === "questionPaperBank" && <QuestionPaperBank />} {/* Add QuestionPaperBank */}
+        {activeSection === "library" && <LibraryPage />}
+        {activeSection === "questionPaperBank" && <QuestionPaperBank />}
       </div>
 
       {/* Notifications Bar */}
