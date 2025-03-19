@@ -446,6 +446,33 @@ const LogPage = () => {
     setNewRows(newRows.filter((_, i) => i !== index));
   };
 
+  const [curriculumRows, setCurriculumRows] = useState([]);
+  const handleAddcurrRow = () => {
+    setCurriculumRows([
+      ...curriculumRows,
+      { startDate: "", endDate: "", topic: "", target: "", homework: "" },
+    ]);
+  };
+
+  // Handle input changes
+  const handleInputcurrChange = (e, index, field) => {
+    const updatedRows = [...curriculumRows];
+    updatedRows[index][field] = e.target.value;
+    setCurriculumRows(updatedRows);
+  };
+
+  // Save row (simulating save functionality)
+  const savecurrRow = (index) => {
+    console.log("Saved Row:", curriculumRows[index]);
+  };
+
+  // Remove row
+  const removecurrRow = (index) => {
+    const updatedRows = curriculumRows.filter((_, i) => i !== index);
+    setCurriculumRows(updatedRows);
+  };
+
+
   // Render the generated log in a tabular form
   const renderGeneratedLog = () => {
     if (!generatedLog) return null;
@@ -584,7 +611,105 @@ const LogPage = () => {
 
       {/* Daily Progress Section */}
       {/* {renderDailyProgress()} */}
+      
+      <div className="flex justify-between items-center mb-4 mt-10">
+        <h2 className="text-2xl font-semibold text-white">Curriculum Table</h2>
+        <button
+          onClick={handleAddcurrRow}
+          className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-600 transition duration-300"
+        >
+          <FaPlus className="mr-2" /> Add New Entry
+        </button>
+      </div>
 
+      {/* Table */}
+      <div className="overflow-auto max-h-96">
+        <table className="w-full bg-gray-700 rounded-lg text-sm">
+          <thead>
+            <tr className="bg-gray-600 text-white">
+              <th className="p-3 text-left">Start Date</th>
+              <th className="p-3 text-left">End Date</th>
+              <th className="p-3 text-left">Topic</th>
+              <th className="p-3 text-left">Target</th>
+              <th className="p-3 text-left">Homework</th>
+              <th className="p-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* Curriculum Rows (Editable) */}
+            {curriculumRows.map((row, index) => (
+              <tr key={index} className="border-b border-gray-600">
+                <td className="p-3">
+                  <input
+                    type="date"
+                    value={row.startDate}
+                    onChange={(e) => handleInputcurrChange(e, index, "startDate")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="date"
+                    value={row.endDate}
+                    onChange={(e) => handleInputcurrChange(e, index, "endDate")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Topic"
+                    value={row.topic}
+                    onChange={(e) => handleInputcurrChange(e, index, "topic")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Target"
+                    value={row.target}
+                    onChange={(e) => handleInputcurrChange(e, index, "target")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Homework"
+                    value={row.homework}
+                    onChange={(e) => handleInputcurrChange(e, index, "homework")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3 flex space-x-2">
+                  <button
+                    onClick={() => savecurrRow(index)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition duration-300"
+                  >
+                    <FaSave className="mr-2" /> Save
+                  </button>
+                  <button
+                    onClick={() => removecurrRow(index)}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-red-600 transition duration-300"
+                  >
+                    <FaTrash className="mr-2" /> Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {/* No Data Message */}
+            {curriculumRows.length === 0 && (
+              <tr>
+                <td className="p-3 text-white text-center" colSpan="6">
+                  No curriculum entries available.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg mt-10">
         <div className="flex justify-between items-center mb-4">
@@ -664,8 +789,15 @@ const LogPage = () => {
                       placeholder="Day"
                       value={row.day}
                       onChange={(e) => handleInputChange(e, index, "day")}
-                      className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                      className={`w-full p-2 bg-gray-700 text-white rounded-lg border ${
+                        /^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(row.day) || row.day === ""
+                          ? "border-gray-600"
+                          : "border-red-500"
+                      }`}
                     />
+                    {!/^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(row.day) && row.day !== "" && (
+    <p className="text-red-500 text-xs mt-1">Invalid format! Use 1, Monday, or 1-3.</p>
+  )}
                   </td>
                   <td className="p-3">
                     <input

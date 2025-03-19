@@ -21,7 +21,7 @@ const SearchSchools = ({ schools }) => {
   };
 
   const handleViewDashboard = (uniqueId) => {
-    navigate(`/school-dashboard/${uniqueId}`);
+    window.open(`/school-dashboard/${uniqueId}`,"_blank");
   };
 
   return (
