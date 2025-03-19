@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { FaSave, FaChalkboardTeacher, FaTrash, FaPlus } from "react-icons/fa";
+import { FaSave, FaTrash, FaPlus } from "react-icons/fa";
 
 const TeacherDetails = () => {
   const [teacher, setTeacher] = useState(null);
@@ -237,32 +237,74 @@ const TeacherDetails = () => {
 
         {/* Curriculum Logs */}
         <div className="mb-4">
-          <label className="text-white font-medium">Curriculum Logs</label>
-          <div className="mt-2">
-            {curriculumLogs.map((log) => (
-              <div key={log.id} className="bg-gray-700 p-4 rounded-lg mb-4">
-                <p className="text-white"><strong>Subject:</strong> {log.subject}</p>
-                <p className="text-white"><strong>Class:</strong> {log.class}</p>
-                <p className="text-white"><strong>Book ID:</strong> {log.bookId}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+  <label className="text-white font-medium text-xl mb-2 block">Curriculum Logs</label>
+  
+  <div className="overflow-auto bg-gray-800 p-4 rounded-lg shadow-lg max-h-96">
+    <table className="w-full bg-gray-700 rounded-lg text-sm">
+      <thead>
+        <tr className="bg-gray-600 text-white">
+          <th className="p-3 text-left">Subject</th>
+          <th className="p-3 text-left">Class</th>
+          <th className="p-3 text-left">Book ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {curriculumLogs.length > 0 ? (
+          curriculumLogs.map((log, index) => (
+            <tr key={log.id} className="border-b border-gray-600 hover:bg-gray-600 transition duration-200">
+              <td className="p-3 text-white">{log.subject}</td>
+              <td className="p-3 text-gray-400">{log.class}</td>
+              <td className="p-3 text-gray-400">{log.bookId}</td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td className="p-3 text-white text-center" colSpan="3">
+              No curriculum logs available.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 
         {/* Daily Logs */}
         <div className="mb-4">
           <label className="text-white font-medium">Daily Logs</label>
-          <div className="mt-2">
-            {dailyLogs.map((log) => (
-              <div key={log.id} className="bg-gray-700 p-4 rounded-lg mb-4">
-                <p className="text-white"><strong>Subject:</strong> {log.subject}</p>
-                <p className="text-white"><strong>Class:</strong> {log.class}</p>
-                <p className="text-white"><strong>Day:</strong> {log.day}</p>
-                <p className="text-white"><strong>Log:</strong> {log.log}</p>
-                <p className="text-white"><strong>Timestamp:</strong> {log.timestamp}</p>
-              </div>
-            ))}
-          </div>
+          <div className="overflow-auto bg-gray-800 p-4 rounded-lg shadow-lg max-h-96">
+    <table className="w-full bg-gray-700 rounded-lg text-sm">
+      <thead>
+        <tr className="bg-gray-600 text-white">
+          <th className="p-3 text-left">Subject</th>
+          <th className="p-3 text-left">Class</th>
+          <th className="p-3 text-left">Day</th>
+          <th className="p-3 text-left">Log</th>
+          <th className="p-3 text-left">Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {dailyLogs.length > 0 ? (
+          dailyLogs.map((log, index) => (
+            <tr key={log.id} className="border-b border-gray-600 hover:bg-gray-600 transition duration-200">
+              <td className="p-3 text-white">{log.subject}</td>
+              <td className="p-3 text-gray-400">{log.class}</td>
+              <td className="p-3 text-gray-400">Day {log.day}</td>
+              <td className="p-3 text-gray-400">{log.log}</td>
+              <td className="p-3 text-gray-400">{new Date(log.timestamp).toLocaleString()}</td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td className="p-3 text-white text-center" colSpan="5">
+              No logs available.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
         </div>
 
         {/* Save/Edit Button */}
