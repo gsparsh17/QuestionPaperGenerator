@@ -55,7 +55,7 @@ const StaffRoom = ({ onBack }) => {
   const handleOpenTeacherDashboard = (teacherId) => {
     // Construct the URL for the teacher's dashboard
     const url = `/main/teacher-dashboard?schoolId=${schoolId}&teacherId=${teacherId}`;
-    navigate(url); // Navigate to the teacher's dashboard
+    window.open(url, "_blank"); // Navigate to the teacher's dashboard
   };
 
   const handleOpenTeacherDetails = (teacherId) => {
