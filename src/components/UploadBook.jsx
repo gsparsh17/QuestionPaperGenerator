@@ -4,7 +4,6 @@ import { db } from "../firebaseConfig";
 import AWS from "aws-sdk";
 import { useNavigate } from "react-router-dom";
 
-
 AWS.config.update({
   region: "ap-south-1",
   credentials: {
