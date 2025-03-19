@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { FaUser, FaEnvelope, FaBook, FaSearch, FaPlus } from "react-icons/fa";
@@ -10,6 +10,11 @@ const StaffRoom = ({ onBack }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [newTeacher, setNewTeacher] = useState({ name: "", email: "", subject: "" });
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Extract schoolId from the current URL
+  const queryParams = new URLSearchParams(location.search);
+  const schoolId = queryParams.get("schoolId");
 
   useEffect(() => {
     const fetchTeachers = async () => {
@@ -46,6 +51,18 @@ const StaffRoom = ({ onBack }) => {
   const filteredTeachers = teachers.filter((teacher) =>
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleOpenTeacherDashboard = (teacherId) => {
+    // Construct the URL for the teacher's dashboard
+    const url = `/main/teacher-dashboard?schoolId=${schoolId}&teacherId=${teacherId}`;
+    navigate(url); // Navigate to the teacher's dashboard
+  };
+
+  const handleOpenTeacherDetails = (teacherId) => {
+    // Navigate to the Teacher Details Page
+    const url = `/main/teacher-details?schoolId=${schoolId}&teacherId=${teacherId}`;
+    navigate(url);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black py-8 px-4 sm:px-6 lg:px-8">
@@ -95,11 +112,17 @@ const StaffRoom = ({ onBack }) => {
                 </div>
               </div>
               <button
-                onClick={() => navigate(`/teacher/${teacher.id}`)}
-                className="text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
+                onClick={() => handleOpenTeacherDashboard(teacher.id)}
+                className="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-all duration-300"
               >
-                View Details
+                Open Dashboard
               </button>
+              <button
+            onClick={() => handleOpenTeacherDetails(teacher.id)}
+            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300 ml-2"
+                >
+             View Details
+            </button>
             </motion.div>
           ))
         ) : (

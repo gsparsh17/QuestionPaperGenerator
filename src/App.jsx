@@ -19,6 +19,13 @@ import StaffRoom from "./components/StaffRoom";
 import LibraryPage from "./components/LibraryPage";
 import GeneratedPapers from "./components/GeneratedPapers";
 import Main from "./components/Main";
+import Help from "./components/Help";
+import Settings from "./components/Settings";
+import TeacherDashboard from "./components/TeacherDashboard";
+import TeacherDetails from "./components/TeacherDetails";
+import CurriculumPage from "./components/Curriculum";
+import LogPage from "./components/Logs";
+import ManualPaperEditor from "./components/ManualPaperEditor";
 
 const App = () => {
   return (
@@ -45,10 +52,13 @@ const App = () => {
         <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/activities" element={<Activities />} />
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/question-paper-generator" element={<QuestionPaperGenerator/>} />
+        <Route path="/manual-paper-editor" element={<ManualPaperEditor/>} />
         <Route path="/final-question-paper" element={<FinalQuestionPaper/>} />
         <Route path="/generated-papers" element={<GeneratedPapers />} />
         <Route path="/schooldashboard" element={<SchoolDashboard />} />
@@ -57,6 +67,10 @@ const App = () => {
         <Route path="/question-paper-display" element={<QuestionPaperDisplay />} />
         <Route path="/recent-activities" element={<RecentActivities />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/main/teacher-dashboard" element={<TeacherDashboard />} />
+        <Route path="/main/teacher-details" element={<TeacherDetails />} />
+        <Route path="/main/curriculum" element={<CurriculumPage />} />
+        <Route path="/main/log" element={<LogPage />} />
         <Route path="/activities/:activityId" element={<ActivityDetails/>} />
       </Routes>
     </Router>

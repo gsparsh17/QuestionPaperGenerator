@@ -374,7 +374,7 @@ const FinalQuestionPaper = () => {
       });
 
       // Handle MCQ options
-      if (question.question_type === "MCQ") {
+      if (question.question_type === "MCQ"&& question.subparts) {
         pdf.setFont("helvetica", "normal");
         question.subparts.forEach((subpart, subIndex) => {
           const subpartText = `${subpart.subpart_number}) ${subpart.question}`;
@@ -411,7 +411,7 @@ const FinalQuestionPaper = () => {
       }
 
       // Handle Fill in the Blanks with subparts
-      if (question.question_type === "Fill in the Blanks") {
+      if (question.question_type === "Fill in the Blanks"&& question.subparts) {
         pdf.setFont("helvetica", "normal");
         question.subparts.forEach((subpart, subIndex) => {
           const subpartText = `${subpart.subpart_number}) ${subpart.question}`;
@@ -431,7 +431,7 @@ const FinalQuestionPaper = () => {
       }
 
       // Handle Match the Following
-      if (question.question_type === "Match the Following") {
+      if (question.question_type === "Match the Following" && question.pairs) {
         pdf.setFont("helvetica", "normal");
         const matchText = "Match the following terms with their definitions:";
         const matchHeight = pdf.splitTextToSize(matchText, maxWidth).length * lineHeight;
@@ -547,7 +547,7 @@ const FinalQuestionPaper = () => {
             </h3>
 
             {/* MCQ Options */}
-            {question.question_type === "MCQ" && (
+            {question.question_type === "MCQ" && question.subparts && (
               <ul className="ml-5 list-disc">
                 {question.subparts.map((subpart, subIndex) => (
                   <li key={subIndex} className="text-gray-800">
@@ -565,7 +565,7 @@ const FinalQuestionPaper = () => {
             )}
 
             {/* Fill in the Blanks Subparts */}
-            {question.question_type === "Fill in the Blanks" && (
+            {question.question_type === "Fill in the Blanks" && question.subparts && (
               <ul className="ml-5 list-disc">
                 {question.subparts.map((subpart, subIndex) => (
                   <li key={subIndex} className="text-gray-800">

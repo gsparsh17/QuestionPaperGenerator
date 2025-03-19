@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 const subjects = [
   "Mathematics",
@@ -32,23 +33,41 @@ const subjects = [
   "Political Science",
   "Biotechnology",
   "Engineering Graphics",
-  "Entrepreneurship"
+  "Entrepreneurship",
 ];
-const AddTeacher = ({ fetchData }) => {
+
+const classes = [
+  "Class 1",
+  "Class 2",
+  "Class 3",
+  "Class 4",
+  "Class 5",
+  "Class 6",
+  "Class 7",
+  "Class 8",
+  "Class 9",
+  "Class 10",
+  "Class 11",
+  "Class 12",
+];
+
+const AddTeacher = ({ fetchData = () => {} }) => {
   const [teacherName, setTeacherName] = useState("");
   const [teacherEmail, setTeacherEmail] = useState("");
-  const [teacherSubject, setTeacherSubject] = useState("");
-  const [teacherSchoolId, setTeacherSchoolId] = useState(""); // Store the uniqueId of the school
+  const [teacherSchoolId, setTeacherSchoolId] = useState("");
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [subjectClasses, setSubjectClasses] = useState({}); // { subject: [classes] }
   const [schools, setSchools] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
+  const [expandedSubject, setExpandedSubject] = useState(null); // Track expanded subject
 
   useEffect(() => {
     const fetchSchools = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "schools"));
         const schoolList = querySnapshot.docs.map((doc) => ({
-          id: doc.id, // Firestore document ID
-          uniqueId: doc.data().uniqueId, // Unique school ID
+          id: doc.id,
+          uniqueId: doc.data().uniqueId,
           schoolName: doc.data().schoolName,
         }));
         setSchools(schoolList);
@@ -59,10 +78,45 @@ const AddTeacher = ({ fetchData }) => {
     fetchSchools();
   }, []);
 
+  const handleSubjectSelection = (subject) => {
+    if (selectedSubjects.includes(subject)) {
+      setSelectedSubjects(selectedSubjects.filter((s) => s !== subject));
+      const updatedSubjectClasses = { ...subjectClasses };
+      delete updatedSubjectClasses[subject];
+      setSubjectClasses(updatedSubjectClasses);
+    } else {
+      setSelectedSubjects([...selectedSubjects, subject]);
+      setSubjectClasses({ ...subjectClasses, [subject]: [] });
+    }
+  };
+
+  const handleClassSelection = (subject, selectedClass) => {
+    const updatedClasses = subjectClasses[subject] || [];
+    if (updatedClasses.includes(selectedClass)) {
+      setSubjectClasses({
+        ...subjectClasses,
+        [subject]: updatedClasses.filter((c) => c !== selectedClass),
+      });
+    } else {
+      setSubjectClasses({
+        ...subjectClasses,
+        [subject]: [...updatedClasses, selectedClass],
+      });
+    }
+  };
+
+  const toggleSubjectAccordion = (subject) => {
+    if (expandedSubject === subject) {
+      setExpandedSubject(null); // Collapse if already expanded
+    } else {
+      setExpandedSubject(subject); // Expand the selected subject
+    }
+  };
+
   const handleAddTeacher = async (e) => {
     e.preventDefault();
-    if (!teacherSchoolId) {
-      alert("Please select a school.");
+    if (!teacherSchoolId || selectedSubjects.length === 0) {
+      alert("Please select a school and at least one subject.");
       return;
     }
 
@@ -71,11 +125,20 @@ const AddTeacher = ({ fetchData }) => {
       const teacherRef = await addDoc(collection(db, "teachers"), {
         name: teacherName,
         email: teacherEmail,
-        subject: teacherSubject,
-        schoolId: teacherSchoolId, // Save the uniqueId of the school
+        schoolId: teacherSchoolId,
+        subjects: selectedSubjects, // Save the array of subjects
       });
 
-      // Step 2: Fetch the school document reference using the uniqueId
+      // Step 2: Add subjects and classes to the teacher's document
+      for (const subject of selectedSubjects) {
+        const subjectRef = collection(db, `teachers/${teacherRef.id}/subjects`);
+        await addDoc(subjectRef, {
+          subject,
+          classes: subjectClasses[subject] || [], // Save the array of classes for the subject
+        });
+      }
+
+      // Step 3: Update the school document to include the new teacher's ID
       const schoolsQuery = query(collection(db, "schools"), where("uniqueId", "==", teacherSchoolId));
       const schoolSnapshot = await getDocs(schoolsQuery);
 
@@ -86,18 +149,23 @@ const AddTeacher = ({ fetchData }) => {
       const schoolDoc = schoolSnapshot.docs[0];
       const schoolRef = doc(db, "schools", schoolDoc.id);
 
-      // Step 3: Update the school document to include the new teacher's ID
-      const currentTeachers = schoolDoc.data().teachers || []; // Get the current teachers array
+      const currentTeachers = schoolDoc.data().teachers || [];
       await updateDoc(schoolRef, {
-        teachers: [...currentTeachers, teacherRef.id], // Append the new teacher's ID
+        teachers: [...currentTeachers, teacherRef.id],
       });
 
       console.log("Teacher added with ID:", teacherRef.id);
       setTeacherName("");
       setTeacherEmail("");
-      setTeacherSubject("");
       setTeacherSchoolId("");
-      fetchData();
+      setSelectedSubjects([]);
+      setSubjectClasses({});
+
+      // Call fetchData only if it's a function
+      if (typeof fetchData === "function") {
+        fetchData();
+      }
+
       setShowPopup(true);
     } catch (error) {
       console.error("Error adding teacher:", error);
@@ -128,21 +196,6 @@ const AddTeacher = ({ fetchData }) => {
             className="p-2 bg-gray-600 text-slate-100 rounded-lg focus:outline-none"
             required
           />
-          <div>
-          <select
-            value={teacherSubject}
-            onChange={(e) => setTeacherSubject(e.target.value)}
-            className="w-full p-2 bg-gray-600 text-slate-100 rounded-lg focus:outline-none"
-            required
-          >
-            <option value="">Select Subject</option>
-            {subjects.map((subject, index) => (
-              <option key={index} value={subject}>
-                {subject}
-              </option>
-            ))}
-          </select>
-        </div>
           <select
             value={teacherSchoolId}
             onChange={(e) => setTeacherSchoolId(e.target.value)}
@@ -157,6 +210,61 @@ const AddTeacher = ({ fetchData }) => {
             ))}
           </select>
         </div>
+
+        {/* Subject Selection */}
+        <div className="mt-4">
+          <h4 className="text-lg font-semibold text-slate-100 mb-2">Select Subjects</h4>
+          <div className="space-y-2">
+            {subjects.map((subject) => (
+              <div key={subject} className="bg-gray-600 p-3 rounded-lg">
+                <div
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSubjectAccordion(subject)}
+                >
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={subject}
+                      checked={selectedSubjects.includes(subject)}
+                      onChange={() => handleSubjectSelection(subject)}
+                      className="mr-2"
+                    />
+                    <label htmlFor={subject} className="text-slate-100">
+                      {subject}
+                    </label>
+                  </div>
+                  <span className="text-slate-100">
+                    {expandedSubject === subject ? <FaChevronUp /> : <FaChevronDown />}
+                  </span>
+                </div>
+                {expandedSubject === subject && (
+                  <div className="mt-2 pl-6">
+                    <h4 className="text-md font-semibold text-slate-100 mb-2">
+                      Select Classes for {subject}
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {classes.map((cls) => (
+                        <div key={cls} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`${subject}-${cls}`}
+                            checked={subjectClasses[subject]?.includes(cls)}
+                            onChange={() => handleClassSelection(subject, cls)}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`${subject}-${cls}`} className="text-slate-100">
+                            {cls}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button
           type="submit"
           className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200"

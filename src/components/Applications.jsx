@@ -1,57 +1,213 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaCheckCircle, FaTimesCircle, FaUser, FaCalendarAlt } from "react-icons/fa";
+import { FaCheckCircle, FaTimesCircle, FaUser, FaCalendarAlt, FaPlus } from "react-icons/fa";
+import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Import Firestore
 
-// Mock data for leave applications (replace with actual data from your backend)
-const mockLeaveApplications = [
-  {
-    id: 1,
-    teacherName: "John Doe",
-    leaveType: "Sick Leave",
-    startDate: "2023-10-15",
-    endDate: "2023-10-17",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    teacherName: "Jane Smith",
-    leaveType: "Vacation Leave",
-    startDate: "2023-10-20",
-    endDate: "2023-10-25",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    teacherName: "Alice Johnson",
-    leaveType: "Personal Leave",
-    startDate: "2023-10-18",
-    endDate: "2023-10-19",
-    status: "Pending",
-  },
-];
+const Applications = ({ teacherId, schoolId, onBack }) => {
+  const [leaveApplications, setLeaveApplications] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    leaveType: "",
+    startDate: "",
+    endDate: "",
+    reason: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-const Applications = ({ onBack }) => {
-  const [leaveApplications, setLeaveApplications] = useState(mockLeaveApplications);
+  // Fetch leave applications based on schoolId or teacherId
+  useEffect(() => {
+    const fetchLeaveApplications = async () => {
+      try {
+        let applicationsRef;
 
-  // Function to handle accepting a leave application
-  const handleAccept = (id) => {
-    setLeaveApplications((prevApplications) =>
-      prevApplications.map((app) =>
-        app.id === id ? { ...app, status: "Approved" } : app
-      )
-    );
-    // Add logic to update the backend here
+        if (schoolId) {
+          // Fetch the school document reference using the schoolId
+          const schoolsRef = collection(db, "schools");
+          const schoolsQuery = query(schoolsRef, where("uniqueId", "==", schoolId));
+          const schoolsSnapshot = await getDocs(schoolsQuery);
+
+          if (!schoolsSnapshot.empty) {
+            const schoolDocRef = schoolsSnapshot.docs[0].ref;
+            applicationsRef = collection(schoolDocRef, "applications");
+          } else {
+            setError("School not found");
+            return;
+          }
+        } else if (teacherId) {
+          // Fetch the teacher's schoolId first
+          const teacherDocRef = doc(db, "teachers", teacherId);
+          const teacherDocSnap = await getDoc(teacherDocRef);
+
+          if (teacherDocSnap.exists()) {
+            const teacherData = teacherDocSnap.data();
+            const schoolId = teacherData.schoolId;
+
+            // Fetch the school document reference using the schoolId
+            const schoolsRef = collection(db, "schools");
+            const schoolsQuery = query(schoolsRef, where("uniqueId", "==", schoolId));
+            const schoolsSnapshot = await getDocs(schoolsQuery);
+
+            if (!schoolsSnapshot.empty) {
+              const schoolDocRef = schoolsSnapshot.docs[0].ref;
+              applicationsRef = collection(schoolDocRef, "applications");
+
+              // Fetch leave applications for the teacher's school
+              const applicationsQuery = query(applicationsRef, where("teacherId", "==", teacherId));
+              const applicationsSnapshot = await getDocs(applicationsQuery);
+              const applications = applicationsSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              setLeaveApplications(applications);
+            } else {
+              setError("School not found");
+              return;
+            }
+          } else {
+            setError("Teacher not found");
+            return;
+          }
+        }
+
+        // Fetch all leave applications for the school
+        const applicationsSnapshot = await getDocs(applicationsRef);
+        const applications = applicationsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLeaveApplications(applications);
+      } catch (error) {
+        setError("Error fetching leave applications");
+        console.error("Error fetching leave applications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaveApplications();
+  }, [teacherId, schoolId]);
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
 
-  // Function to handle rejecting a leave application
-  const handleReject = (id) => {
-    setLeaveApplications((prevApplications) =>
-      prevApplications.map((app) =>
-        app.id === id ? { ...app, status: "Rejected" } : app
-      )
-    );
-    // Add logic to update the backend here
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (teacherId) {
+      try {
+        // Fetch the teacher's schoolId and name
+        const teacherDocRef = doc(db, "teachers", teacherId);
+        const teacherDocSnap = await getDoc(teacherDocRef);
+        if (teacherDocSnap.exists()) {
+          const teacherData = teacherDocSnap.data();
+          const schoolId = teacherData.schoolId;
+          const teacherName = teacherData.name;
+
+          // Fetch the school document reference using the schoolId
+          const schoolsRef = collection(db, "schools");
+          const schoolsQuery = query(schoolsRef, where("uniqueId", "==", schoolId));
+          const schoolsSnapshot = await getDocs(schoolsQuery);
+
+          if (!schoolsSnapshot.empty) {
+            const schoolDocRef = schoolsSnapshot.docs[0].ref;
+
+            // Add the leave application to the school's applications subcollection
+            const applicationsRef = collection(schoolDocRef, "applications");
+            await addDoc(applicationsRef, {
+              teacherId,
+              teacherName,
+              ...formData,
+              status: "Pending",
+            });
+
+            // Reset form and hide it
+            setFormData({
+              leaveType: "",
+              startDate: "",
+              endDate: "",
+              reason: "",
+            });
+            setShowForm(false);
+
+            // Refresh the leave applications list
+            const applicationsQuery = query(applicationsRef, where("teacherId", "==", teacherId));
+            const applicationsSnapshot = await getDocs(applicationsQuery);
+            const applications = applicationsSnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+            setLeaveApplications(applications);
+          } else {
+            setError("School not found");
+          }
+        }
+      } catch (error) {
+        setError("Error submitting application");
+        console.error("Error submitting application:", error);
+      }
+    }
   };
+
+  // Handle accepting a leave application
+  const handleAccept = async (id) => {
+    if (schoolId) {
+      try {
+        const applicationRef = doc(db, "schools", schoolId, "applications", id);
+        await updateDoc(applicationRef, { status: "Approved" });
+
+        // Refresh the leave applications list
+        const applicationsRef = collection(db, "schools", schoolId, "applications");
+        const applicationsSnapshot = await getDocs(applicationsRef);
+        const applications = applicationsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLeaveApplications(applications);
+      } catch (error) {
+        setError("Error accepting application");
+        console.error("Error accepting application:", error);
+      }
+    }
+  };
+
+  // Handle rejecting a leave application
+  const handleReject = async (id) => {
+    if (schoolId) {
+      try {
+        const applicationRef = doc(db, "schools", schoolId, "applications", id);
+        await updateDoc(applicationRef, { status: "Rejected" });
+
+        // Refresh the leave applications list
+        const applicationsRef = collection(db, "schools", schoolId, "applications");
+        const applicationsSnapshot = await getDocs(applicationsRef);
+        const applications = applicationsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLeaveApplications(applications);
+      } catch (error) {
+        setError("Error rejecting application");
+        console.error("Error rejecting application:", error);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white text-center py-8">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-white text-center py-8">{error}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black py-8 px-4 sm:px-6 lg:px-8">
@@ -66,6 +222,75 @@ const Applications = ({ onBack }) => {
       >
         &larr; Back
       </button> */}
+
+      {/* Show form for teachers to submit leave applications */}
+      {teacherId && (
+        <div className="mb-8">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+          >
+            <FaPlus />
+            <span>Submit Leave Application</span>
+          </button>
+
+          {showForm && (
+            <form onSubmit={handleSubmit} className="mt-4 bg-gray-800 p-6 rounded-xl">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white">Leave Type</label>
+                  <input
+                    type="text"
+                    name="leaveType"
+                    value={formData.leaveType}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white">Start Date</label>
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white">End Date</label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white">Reason</label>
+                  <textarea
+                    name="reason"
+                    value={formData.reason}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 text-white"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       {/* Leave Applications List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -99,6 +324,11 @@ const Applications = ({ onBack }) => {
                 </p>
               </div>
 
+              {/* Reason */}
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-400">{application.reason}</p>
+              </div>
+
               {/* Status */}
               <div className="flex items-center space-x-2">
                 <p
@@ -114,8 +344,8 @@ const Applications = ({ onBack }) => {
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              {application.status === "Pending" && (
+              {/* Action Buttons for School */}
+              {schoolId && application.status === "Pending" && (
                 <div className="flex justify-between gap-2">
                   <button
                     onClick={() => handleAccept(application.id)}

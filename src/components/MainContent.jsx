@@ -38,6 +38,7 @@ import { auth, db } from "../firebaseConfig";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import RecentActivities from "./RecentActivities";
+import SetExams from "./SetExams";
 
 const MainContent = ({ activeFeature, onFeatureChange }) => {
   const {
@@ -60,6 +61,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
   const [numTeachers, setNumTeachers] = useState(0);
   const [numGeneratedPapers, setNumGeneratedPapers] = useState(0);
   const [loadingSchoolData, setLoadingSchoolData] = useState(true);
+  const [hasPendingApplications, setHasPendingApplications] = useState(false); // State for pending applications
 
   // Fetch schoolId from URL
   useEffect(() => {
@@ -72,7 +74,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
     }
   }, [location, navigate]);
 
-  // Fetch school data (name, teachers, generated papers)
+  // Fetch school data (name, teachers, generated papers, pending applications)
   useEffect(() => {
     const fetchSchoolData = async () => {
       if (!schoolId) return;
@@ -96,6 +98,12 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
           const papersQuery = query(collection(db, "questionPapers"), where("schoolId", "==", schoolId));
           const papersSnapshot = await getDocs(papersQuery);
           setNumGeneratedPapers(papersSnapshot.size);
+
+          // Fetch pending applications
+          const applicationsRef = collection(schoolsSnapshot.docs[0].ref, "applications");
+          const pendingApplicationsQuery = query(applicationsRef, where("status", "==", "Pending"));
+          const pendingApplicationsSnapshot = await getDocs(pendingApplicationsQuery);
+          setHasPendingApplications(!pendingApplicationsSnapshot.empty); // Set state based on pending applications
         }
       } catch (error) {
         console.error("Error fetching school data:", error);
@@ -133,6 +141,8 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
         return <LibraryPage onBack={() => onFeatureChange(null)} />;
       case "uploadBook":
         return <UploadBook onBack={() => onFeatureChange(null)} />;
+        case "setExams":
+          return <SetExams schoolId={schoolId} onBack={() => onFeatureChange(null)} />;        
       case "questionPaperBank":
         return <QuestionPaperBank onBack={() => onFeatureChange(null)} />;
       case "addTeacher":
@@ -142,7 +152,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
       case "generatePaper":
         return <QuestionPaperGenerator onBack={() => onFeatureChange(null)} />;
       case "applications":
-        return <Applications onBack={() => onFeatureChange(null)} />;
+        return <Applications schoolId={schoolId} onBack={() => onFeatureChange(null)} />;
       case "recentActivities":
         return <RecentActivities onBack={() => onFeatureChange(null)} />;
       default:
@@ -163,6 +173,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
 
             {/* Stats Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {/* Number of Teachers */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -178,6 +189,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
                 </div>
               </motion.div>
 
+              {/* Generated Papers */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -193,6 +205,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
                 </div>
               </motion.div>
 
+              {/* Library Books */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -211,6 +224,32 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
 
             {/* Quick Actions Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 relative"
+                onClick={() => onFeatureChange("applications")}
+              >
+                {/* Blinking Red Dot */}
+                {hasPendingApplications && (
+                  <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full animate-ping"></div>
+                )}
+                <div className="flex flex-col items-center">
+                  <FaCode className="text-4xl text-pink-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-white">Applications</h3>
+                </div>
+              </motion.button>
+              <motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  className="bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+  onClick={() => onFeatureChange("setExams")}
+>
+  <div className="flex flex-col items-center">
+    <FaFileAlt className="text-4xl text-orange-400 mb-4" />
+    <h3 className="text-xl font-semibold text-white">Set Exams</h3>
+  </div>
+</motion.button>
               {/* Document QA */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -367,18 +406,7 @@ const MainContent = ({ activeFeature, onFeatureChange }) => {
                 </div>
               </motion.button>
 
-              {/* Applications */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                onClick={() => onFeatureChange("applications")}
-              >
-                <div className="flex flex-col items-center">
-                  <FaCode className="text-4xl text-pink-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-white">Applications</h3>
-                </div>
-              </motion.button>
+              
             </div>
           </div>
         );

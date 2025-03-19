@@ -7,6 +7,45 @@ import { getFirestore, collection, getDocs } from "firebase/firestore"; // Fireb
 // Manually set the worker file path
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
+const classes = [
+  "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", 
+  "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", 
+  "Class 11", "Class 12"
+];
+
+const subjects = [
+  "Mathematics",
+  "Science",
+  "Social Science",
+  "English",
+  "Hindi",
+  "Sanskrit",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "History",
+  "Geography",
+  "Civics",
+  "Economics",
+  "Business Studies",
+  "Accountancy",
+  "Computer Science",
+  "Information Technology",
+  "Physical Education",
+  "Environmental Studies",
+  "General Knowledge",
+  "Art and Craft",
+  "Music",
+  "Dance",
+  "Home Science",
+  "Psychology",
+  "Sociology",
+  "Political Science",
+  "Biotechnology",
+  "Engineering Graphics",
+  "Entrepreneurship"
+];
+
 const QuestionPaperGenerator = () => {
   const [pdfFiles, setPdfFiles] = useState([]);
   const [uploadedBooks, setUploadedBooks] = useState([]); // List of uploaded books
@@ -30,6 +69,20 @@ const QuestionPaperGenerator = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [schoolId, setSchoolId] = useState("");
+  const queryParams = new URLSearchParams(location.search);
+const selectedClass = queryParams.get("class");
+const selectedSubject = queryParams.get("subject");
+const requestId = queryParams.get("requestId");
+
+// Pre-fill the form fields if class and subject are provided
+useEffect(() => {
+  if (selectedClass && selectedSubject) {
+    setFilters({
+      subject: selectedSubject,
+      class: selectedClass,
+    });
+  }
+}, [selectedClass, selectedSubject]);
 
   // Check for schoolId in the URL
   useEffect(() => {
@@ -404,36 +457,46 @@ const QuestionPaperGenerator = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex gap-4">
-                <select
-                  name="subject"
-                  value={filters.subject}
-                  onChange={handleFilterChange}
-                  className="w-full p-2 bg-gray-800 rounded-lg text-slate-300"
-                >
-                  <option value="">Filter by Subject</option>
-                  <option value="Math">Math</option>
-                  <option value="Science">Science</option>
-                  <option value="History">History</option>
-                  {/* Add more subjects as needed */}
-                </select>
+              <div>
+          <label className="block text-slate-100 mb-2">Subject</label>
+          <select
+            value={filters.subject}
+            onChange={handleFilterChange}
+            className="w-full p-2 bg-gray-700 text-slate-100 rounded-lg focus:outline-none"
+            required
+          >
+            <option value="">Select Subject</option>
+            {subjects.map((subject, index) => (
+              <option key={index} value={subject}>
+                {subject}
+              </option>
+            ))}
+          </select>
+        </div>
 
-                <select
-                  name="class"
-                  value={filters.class}
-                  onChange={handleFilterChange}
-                  className="w-full p-2 bg-gray-800 rounded-lg text-slate-300"
-                >
-                  <option value="">Filter by Class</option>
-                  <option value="Class 6">Class 6</option>
-                  <option value="Class 7">Class 7</option>
-                  <option value="Class 8">Class 8</option>
-                  {/* Add more classes as needed */}
-                </select>
-              </div>
+        <div>
+          <label className="block text-slate-100 mb-2">Class</label>
+          <select
+            value={filters.class}
+            onChange={handleFilterChange}
+            className="w-full p-2 bg-gray-700 text-slate-100 rounded-lg focus:outline-none"
+            required
+          >
+            <option value="">Select Class</option>
+            {classes.map((cls, index) => (
+              <option key={index} value={cls}>
+                {cls}
+              </option>
+            ))}
+          </select>
+        </div>
 
               {/* Book List */}
               <div className="max-h-48 overflow-y-auto">
+              <label className="block text-slate-100 mb-2">Select The Book</label>
+                {filteredBooks.length === 0 && (
+                  <p className="text-sm text-gray-400">No books found.</p>
+                )}
                 {filteredBooks.map((book) => (
                   <div
                     key={book.id}
