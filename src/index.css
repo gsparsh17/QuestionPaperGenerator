@@ -56,3 +56,22 @@
       margin: -20px;
     }
   }
+
+  /* Add this to your global CSS file or a <style> tag */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px; /* Adjust scrollbar width */
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #374151; /* Track color (gray-700) */
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #6b7280; /* Thumb color (gray-500) */
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* Thumb color on hover (gray-600) */
+}

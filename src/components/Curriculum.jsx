@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { collection, query, where, getDocs, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useNavigate, useLocation } from "react-router-dom";
+import '../index.css'
 
 const CurriculumPage = () => {
   const [subjects, setSubjects] = useState([]); // List of subjects taught by the teacher
@@ -221,23 +222,23 @@ alert("Book assigned successfully!");
       </div>
 
       {/* Book Selection */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-white mb-4">Select Book</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {books.map((book) => (
-            <div
-              key={book.id}
-              className={`p-4 rounded-lg cursor-pointer ${
-                selectedBook === book.id ? "bg-indigo-600" : "bg-gray-800"
-              }`}
-              onClick={() => setSelectedBook(book.id)}
-            >
-              <h3 className="text-white font-medium">{book.title}</h3>
-              <p className="text-gray-400">{book.author}</p>
-            </div>
-          ))}
-        </div>
+<div className="mb-8">
+  <h2 className="text-2xl font-semibold text-white mb-4">Select Book</h2>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-64 overflow-y-auto"> {/* Add max-h-64 and overflow-y-auto */}
+    {books.map((book) => (
+      <div
+        key={book.id}
+        className={`p-4 rounded-lg cursor-pointer ${
+          selectedBook === book.id ? "bg-indigo-600" : "bg-gray-800"
+        }`}
+        onClick={() => setSelectedBook(book.id)}
+      >
+        <h3 className="text-white font-medium">{book.title}</h3>
+        <p className="text-gray-400">{book.author}</p>
       </div>
+    ))}
+  </div>
+</div>
 
       {/* Assign Book Button */}
       <button

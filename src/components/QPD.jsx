@@ -401,13 +401,8 @@ const QuestionPaperDisplay = () => {
   };
 
   const renderQuestion = (question, index) => {
-    // Ensure subparts and pairs are defined and are arrays
-    const subparts = question.subparts || [];
-    const pairs = question.pairs || [];
-  
     switch (question.question_type) {
-      case "MCQ":
-      case "mcq":
+      case "MCQ"||"mcq":
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">
@@ -422,7 +417,7 @@ const QuestionPaperDisplay = () => {
                 />
                 <div className="mt-4">
                   <h4 className="font-semibold text-gray-800">Subparts:</h4>
-                  {subparts.map((subpart, subIndex) => (
+                  {question.subparts.map((subpart, subIndex) => (
                     <div key={subIndex} className="mt-2">
                       <textarea
                         className="w-full p-2 border rounded text-gray-900"
@@ -433,7 +428,7 @@ const QuestionPaperDisplay = () => {
                       />
                       <div className="mt-2">
                         <h5 className="font-semibold text-gray-800">Options:</h5>
-                        {(subpart.options || []).map((option, optIndex) => (
+                        {subpart.options.map((option, optIndex) => (
                           <div key={optIndex} className="mt-2">
                             <input
                               type="text"
@@ -469,11 +464,11 @@ const QuestionPaperDisplay = () => {
               <>
                 <p className="text-gray-800 mt-2">{question.question}</p>
                 <ul className="mt-2">
-                  {subparts.map((subpart, subIndex) => (
+                  {question.subparts.map((subpart, subIndex) => (
                     <li key={subIndex} className="text-gray-800">
                       <p>{subpart.subpart_number}) {subpart.question}</p>
                       <ul className="ml-4">
-                        {(subpart.options || []).map((option, optIndex) => (
+                        {subpart.options.map((option, optIndex) => (
                           <li key={optIndex} className="text-gray-800">
                             {String.fromCharCode(65 + optIndex)}. {option}
                           </li>
@@ -488,13 +483,8 @@ const QuestionPaperDisplay = () => {
             <p className="text-gray-600">Chapter: {question.chapter}</p>
           </div>
         );
-  
-      case "Fill in the Blanks":
-      case "FillintheBlanks":
-      case "fillintheblanks":
-      case "FillInTheBlanks":
-      case "FillinTheBlanks":
-      case "fillInTheBlanks":
+
+      case "Fill in the Blanks"||"FillintheBlanks"||"fillintheblanks"||"FillInTheBlanks"||"FillinTheBlanks"||"fillInTheBlanks":
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">
@@ -509,7 +499,7 @@ const QuestionPaperDisplay = () => {
                 />
                 <div className="mt-4">
                   <h4 className="font-semibold text-gray-800">Subparts:</h4>
-                  {subparts.map((subpart, subIndex) => (
+                  {question.subparts.map((subpart, subIndex) => (
                     <div key={subIndex} className="mt-2">
                       <input
                         type="text"
@@ -519,6 +509,14 @@ const QuestionPaperDisplay = () => {
                           handleEditChange(index, "question", e.target.value, subIndex)
                         }
                       />
+                      {/* <input
+                        type="text"
+                        className="w-full p-2 border rounded text-gray-900 mt-2"
+                        value={subpart.correct_answer}
+                        onChange={(e) =>
+                          handleEditChange(index, "correct_answer", e.target.value, subIndex)
+                        }
+                      /> */}
                     </div>
                   ))}
                 </div>
@@ -527,9 +525,9 @@ const QuestionPaperDisplay = () => {
               <>
                 <p className="text-gray-800 mt-2">{question.question}</p>
                 <ul className="mt-2">
-                  {subparts.map((subpart, subIndex) => (
+                  {question.subparts.map((subpart, subIndex) => (
                     <li key={subIndex} className="text-gray-800">
-                      {subpart.subpart_number}) {subpart.question}
+                      {subpart.subpart_number}) {subpart.question} 
                     </li>
                   ))}
                 </ul>
@@ -539,11 +537,8 @@ const QuestionPaperDisplay = () => {
             <p className="text-gray-600">Chapter: {question.chapter}</p>
           </div>
         );
-  
-      case "Match the Following":
-      case "MatchTheFollowing":
-      case "matchthefollowing":
-      case "matchTheFollowing":
+
+      case "Match the Following"||"MatchTheFollowing"||"matchthefollowing"||"matchTheFollowing":
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">
@@ -566,7 +561,7 @@ const QuestionPaperDisplay = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {pairs.map((pair, pairIndex) => (
+                      {question.pairs.map((pair, pairIndex) => (
                         <tr key={pairIndex} className="border">
                           <td className="border p-2">
                             <input
@@ -605,7 +600,7 @@ const QuestionPaperDisplay = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pairs.map((pair, pairIndex) => (
+                    {question.pairs.map((pair, pairIndex) => (
                       <tr key={pairIndex} className="border">
                         <td className="border p-2 text-gray-800">{pair.term}</td>
                         <td className="border p-2 text-gray-800">{pair.definition}</td>
@@ -619,8 +614,8 @@ const QuestionPaperDisplay = () => {
             <p className="text-gray-600">Chapter: {question.chapter}</p>
           </div>
         );
-  
-      default:
+
+        default:
         return (
           <div className="border p-5 rounded-lg shadow-md bg-white mt-4">
             <h3 className="font-semibold text-lg">

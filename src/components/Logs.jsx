@@ -19,7 +19,7 @@ import {
   FaSpinner,
   FaCalendarAlt,
   FaHistory,
-  FaTrash
+  FaTrash,
 } from "react-icons/fa";
 
 // Set the worker path for pdfjsLib
@@ -38,55 +38,58 @@ const LogPage = () => {
   const location = useLocation();
 
   const [ddailyLogs, setddailyLogs] = useState([]); // Store all daily logs
-  const [subjects, setSubjects] = useState([]); 
+  const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
-  
-  const [newLog, setNewLog] = useState({ subject: "", class: "", week: "", day: "", log: "" }); // New log data
-  const [addingNewLog, setAddingNewLog] = useState(false); 
+
+  const [newLog, setNewLog] = useState({
+    subject: "",
+    class: "",
+    week: "",
+    day: "",
+    log: "",
+  }); // New log data
+  const [addingNewLog, setAddingNewLog] = useState(false);
   const queryParams = new URLSearchParams(location.search);
   const teacherId = queryParams.get("teacherId");
-  useEffect(() => {
-      const fetchData = async () => {
-        // Fetch subjects taught by the teacher
-        const subjectsRef = collection(db, "teachers", teacherId, "subjects");
-        const subjectsSnapshot = await getDocs(subjectsRef);
-        const subjectsData = subjectsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setSubjects(subjectsData);
-      };
-  
-      fetchData();
-    }, [teacherId]);
 
-    const [selectedSubject, setSelectedSubject] = useState("");
-    useEffect(() => {
-        const fetchClassesForSubject = async () => {
-          if (!selectedSubject) return;
-    
-          const subjectDoc = subjects.find((subject) => subject.subject === selectedSubject);
-          if (subjectDoc) {
-            setClasses(subjectDoc.classes || []);
-          }
-        };
-    
-        fetchClassesForSubject();
-      }, [selectedSubject, subjects]);
-    
-      useEffect(() => {
-        // Example Data
-        setSubjects([
-          { id: 1, subject: "Math" },
-        ]);
-      
-        setClasses([
-          { id: 1, className: "Class A" },
-        ]);
-      }, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch subjects taught by the teacher
+      const subjectsRef = collection(db, "teachers", teacherId, "subjects");
+      const subjectsSnapshot = await getDocs(subjectsRef);
+      const subjectsData = subjectsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setSubjects(subjectsData);
+    };
+
+    fetchData();
+  }, [teacherId]);
+
+  const [selectedSubject, setSelectedSubject] = useState("");
+  useEffect(() => {
+    const fetchClassesForSubject = async () => {
+      if (!selectedSubject) return;
+
+      const subjectDoc = subjects.find(
+        (subject) => subject.subject === selectedSubject
+      );
+      if (subjectDoc) {
+        setClasses(subjectDoc.classes || []);
+      }
+    };
+
+    fetchClassesForSubject();
+  }, [selectedSubject, subjects]);
+
+  useEffect(() => {
+    // Example Data
+    setSubjects([{ id: 1, subject: "Math" }]);
+    setClasses([{ id: 1, className: "Class A" }]);
+  }, []);
+
   // Extract teacherId, subject, class, and curriculumDocId from the URL
-  
-  
   const subject = queryParams.get("subject");
   const classId = queryParams.get("class");
   const curriculumDocId = queryParams.get("curriculumDocId");
@@ -372,10 +375,7 @@ const LogPage = () => {
         setSubjectsWithClasses(subjectsData);
 
         // Fetch curriculum logs
-        const curriculumRef = collection(
-          db,
-          `teachers/${teacherId}/curriculum`
-        );
+        const curriculumRef = collection(db, `teachers/${teacherId}/curriculum`);
         const curriculumSnapshot = await getDocs(curriculumRef);
         const curriculumData = curriculumSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -413,7 +413,10 @@ const LogPage = () => {
   }, [teacherId]);
 
   const handleAddRow = () => {
-    setNewRows([...newRows, { subject: "", class: "", week: "", day: "", log: "", isSaved: false }]);
+    setNewRows([
+      ...newRows,
+      { subject: "", class: "", week: "", day: "", log: "", isSaved: false },
+    ]);
   };
 
   const handleInputChange = (e, index, field) => {
@@ -461,9 +464,61 @@ const LogPage = () => {
     setCurriculumRows(updatedRows);
   };
 
-  // Save row (simulating save functionality)
-  const savecurrRow = (index) => {
-    console.log("Saved Row:", curriculumRows[index]);
+  // Save row to Firestore
+  const savecurrRow = async (index) => {
+    const row = curriculumRows[index];
+    if (!teacherId) {
+      alert("Teacher ID is missing.");
+      return;
+    }
+
+    try {
+      const curriculumCollection = collection(
+        db,
+        `teachers/${teacherId}/manual_curriculum`
+      );
+
+      await addDoc(curriculumCollection, {
+        ...row,
+        teacherId,
+        timestamp: new Date().toISOString(),
+      });
+
+      alert("Row saved successfully!");
+    } catch (error) {
+      console.error("Error saving row:", error);
+      alert("Failed to save row.");
+    }
+  };
+
+  // Save entire curriculum to Firestore
+  const saveCurriculum = async () => {
+    if (!teacherId) {
+      alert("Teacher ID is missing.");
+      return;
+    }
+
+    try {
+      const curriculumCollection = collection(
+        db,
+        `teachers/${teacherId}/manual_curriculum`
+      );
+
+      // Save each row as a document
+      for (const row of curriculumRows) {
+        await addDoc(curriculumCollection, {
+          ...row,
+          teacherId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      alert("Curriculum saved successfully!");
+      setCurriculumRows([]); // Clear the rows after saving
+    } catch (error) {
+      console.error("Error saving curriculum:", error);
+      alert("Failed to save curriculum.");
+    }
   };
 
   // Remove row
@@ -471,7 +526,6 @@ const LogPage = () => {
     const updatedRows = curriculumRows.filter((_, i) => i !== index);
     setCurriculumRows(updatedRows);
   };
-
 
   // Render the generated log in a tabular form
   const renderGeneratedLog = () => {
@@ -611,7 +665,7 @@ const LogPage = () => {
 
       {/* Daily Progress Section */}
       {/* {renderDailyProgress()} */}
-      
+
       <div className="flex justify-between items-center mb-4 mt-10">
         <h2 className="text-2xl font-semibold text-white">Curriculum Table</h2>
         <button
@@ -622,7 +676,7 @@ const LogPage = () => {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Curriculum Table */}
       <div className="overflow-auto max-h-96">
         <table className="w-full bg-gray-700 rounded-lg text-sm">
           <thead>
@@ -711,6 +765,16 @@ const LogPage = () => {
         </table>
       </div>
 
+      {/* Save Curriculum Button */}
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={saveCurriculum}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition duration-300"
+        >
+          <FaSave className="mr-2" /> Save Curriculum
+        </button>
+      </div>
+
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg mt-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-semibold text-white flex items-center">
@@ -742,8 +806,7 @@ const LogPage = () => {
               {newRows.map((row, index) => (
                 <tr key={`new-${index}`} className="border-b border-gray-600">
                   <td className="p-3">
-                    
-                  <select
+                    <select
                       value={row.subject}
                       onChange={(e) => handleInputChange(e, index, "subject")}
                       className="w-full p-2 bg-gray-700 text-white rounded-lg"
@@ -751,7 +814,9 @@ const LogPage = () => {
                       <option value="">Select Subject</option>
                       {subjects.length > 0 ? (
                         subjects.map((subj) => (
-                          <option key={subj.id} value={subj.subject}>{subj.subject}</option>
+                          <option key={subj.id} value={subj.subject}>
+                            {subj.subject}
+                          </option>
                         ))
                       ) : (
                         <option disabled>No subjects available</option>
@@ -759,7 +824,7 @@ const LogPage = () => {
                     </select>
                   </td>
                   <td className="p-3">
-                  <select
+                    <select
                       value={row.class}
                       onChange={(e) => handleInputChange(e, index, "class")}
                       className="w-full p-2 bg-gray-700 text-white rounded-lg"
@@ -767,7 +832,9 @@ const LogPage = () => {
                       <option value="">Select Class</option>
                       {classes.length > 0 ? (
                         classes.map((cls) => (
-                          <option key={cls.id} value={cls.className}>{cls.className}</option>
+                          <option key={cls.id} value={cls.className}>
+                            {cls.className}
+                          </option>
                         ))
                       ) : (
                         <option disabled>No classes available</option>
@@ -790,14 +857,21 @@ const LogPage = () => {
                       value={row.day}
                       onChange={(e) => handleInputChange(e, index, "day")}
                       className={`w-full p-2 bg-gray-700 text-white rounded-lg border ${
-                        /^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(row.day) || row.day === ""
+                        /^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(
+                          row.day
+                        ) || row.day === ""
                           ? "border-gray-600"
                           : "border-red-500"
                       }`}
                     />
-                    {!/^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(row.day) && row.day !== "" && (
-    <p className="text-red-500 text-xs mt-1">Invalid format! Use 1, Monday, or 1-3.</p>
-  )}
+                    {!/^[0-9]+(-[0-9]+)?$|^[A-Za-z]+(-[A-Za-z]+)?$/.test(
+                      row.day
+                    ) &&
+                      row.day !== "" && (
+                        <p className="text-red-500 text-xs mt-1">
+                          Invalid format! Use 1, Monday, or 1-3.
+                        </p>
+                      )}
                   </td>
                   <td className="p-3">
                     <input
@@ -828,13 +902,18 @@ const LogPage = () => {
               {/* Existing Logs (Saved) */}
               {ddailyLogs.length > 0 ? (
                 ddailyLogs.map((log, index) => (
-                  <tr key={`saved-${index}`} className="border-b border-gray-600 hover:bg-gray-600 transition duration-200">
+                  <tr
+                    key={`saved-${index}`}
+                    className="border-b border-gray-600 hover:bg-gray-600 transition duration-200"
+                  >
                     <td className="p-3 text-white">{log.subject}</td>
                     <td className="p-3 text-gray-400">{log.class}</td>
                     <td className="p-3 text-gray-400">{log.week}</td>
                     <td className="p-3 text-gray-400">Day {log.day}</td>
                     <td className="p-3 text-gray-400">{log.log}</td>
-                    <td className="p-3 text-gray-400">{new Date(log.timestamp).toLocaleDateString()}</td>
+                    <td className="p-3 text-gray-400">
+                      {new Date(log.timestamp).toLocaleDateString()}
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -848,7 +927,6 @@ const LogPage = () => {
           </table>
         </div>
       </div>
-      {/* </div> */}
     </div>
   );
 };
