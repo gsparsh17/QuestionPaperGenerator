@@ -37,7 +37,7 @@ const DefaultDashboard = () => {
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg shadow-xl">
-      <h2 className="text-3xl font-bold mb-8 text-slate-100">Dashboard Overview</h2>
+      <h2 className="text-3xl font-bold mb-8 text-slate-100">Central Admin Itawa</h2>
 
       {/* Navigation Buttons */}
       <div className="flex flex-wrap gap-4 mb-8">

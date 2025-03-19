@@ -26,6 +26,7 @@ import TeacherDetails from "./components/TeacherDetails";
 import CurriculumPage from "./components/Curriculum";
 import LogPage from "./components/Logs";
 import ManualPaperEditor from "./components/ManualPaperEditor";
+import AIPaperEditor from "./components/AIPaperEditor";
 
 const App = () => {
   return (
@@ -59,6 +60,7 @@ const App = () => {
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/question-paper-generator" element={<QuestionPaperGenerator/>} />
         <Route path="/manual-paper-editor" element={<ManualPaperEditor/>} />
+        <Route path="/ai-paper-editor" element={<AIPaperEditor/>} />
         <Route path="/final-question-paper" element={<FinalQuestionPaper/>} />
         <Route path="/generated-papers" element={<GeneratedPapers />} />
         <Route path="/schooldashboard" element={<SchoolDashboard />} />

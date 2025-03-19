@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { motion } from "framer-motion";
 import { Dialog } from "@headlessui/react"; // For modal dialog
@@ -11,6 +11,7 @@ const ExamConfirmation = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal
   const [selectedRequest, setSelectedRequest] = useState(null); // State to store the selected exam request
+  const [chapters, setChapters] = useState(""); // State to store chapters input
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,7 +50,7 @@ const ExamConfirmation = ({ onBack }) => {
       setLoading(true);
       try {
         const examsRef = collection(db, `teachers/${teacherId}/Exams`);
-        const examsQuery = query(examsRef, where("status", "==", "Pending"));
+        const examsQuery = query(examsRef); // Fetch all requests
         const examsSnapshot = await getDocs(examsQuery);
 
         const requests = examsSnapshot.docs.map((doc) => ({
@@ -69,23 +70,28 @@ const ExamConfirmation = ({ onBack }) => {
 
   // Handle "Create Exam" button click
   const handleCreateExamClick = (request) => {
-    setSelectedRequest(request); // Store the selected request
-    setIsModalOpen(true); // Open the modal
+    if (request.status === "Pending") {
+      setSelectedRequest(request); // Store the selected request
+      setIsModalOpen(true); // Open the modal
+    } else {
+      alert("This exam request has already been set.");
+    }
   };
 
   // Handle modal choice (Manual or AI)
   const handleModalChoice = (choice) => {
-    if (!schoolId || !selectedRequest) return;
+    if (!schoolId || !selectedRequest || !chapters) {
+      toast.error("Please enter chapters before proceeding.");
+      return;
+    }
 
     if (choice === "AI") {
-      // Redirect to QuestionPaperGenerator (AI)
       navigate(
-        `/question-paper-generator?schoolId=${schoolId}&teacherId=${teacherId}&class=${selectedRequest.class}&subject=${selectedRequest.subject}&requestId=${selectedRequest.id}`
+        `/ai-paper-editor?schoolId=${schoolId}&teacherId=${teacherId}&class=${selectedRequest.class}&subject=${selectedRequest.subject}&requestId=${selectedRequest.id}&chapters=${encodeURIComponent(chapters)}`
       );
     } else if (choice === "Manual") {
-      // Redirect to ManualPaperEditor
       navigate(
-        `/manual-paper-editor?schoolId=${schoolId}&teacherId=${teacherId}&class=${selectedRequest.class}&subject=${selectedRequest.subject}&requestId=${selectedRequest.id}`
+        `/manual-paper-editor?schoolId=${schoolId}&teacherId=${teacherId}&class=${selectedRequest.class}&subject=${selectedRequest.subject}&requestId=${selectedRequest.id}&chapters=${encodeURIComponent(chapters)}`
       );
     }
 
@@ -110,9 +116,9 @@ const ExamConfirmation = ({ onBack }) => {
 
       {/* Exam Requests Table */}
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-semibold text-white mb-4">Pending Exam Requests</h2>
+        <h2 className="text-2xl font-semibold text-white mb-4">Exam Requests</h2>
         {examRequests.length === 0 ? (
-          <p className="text-white text-center">No pending exam requests.</p>
+          <p className="text-white text-center">No exam requests found.</p>
         ) : (
           <table className="w-full text-white">
             <thead>
@@ -129,19 +135,27 @@ const ExamConfirmation = ({ onBack }) => {
                   <td className="py-2 text-center">{request.subject}</td>
                   <td className="py-2 text-center">{request.class}</td>
                   <td className="py-2 text-center">
-                    <span className="px-2 py-1 rounded-full bg-yellow-500 text-sm">
+                    <span
+                      className={`px-2 py-1 rounded-full text-sm ${
+                        request.status === "Pending"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                    >
                       {request.status}
                     </span>
                   </td>
                   <td className="py-2 text-center">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleCreateExamClick(request)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-                    >
-                      Create Exam
-                    </motion.button>
+                    {request.status === "Pending" && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCreateExamClick(request)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                      >
+                        Create Exam
+                      </motion.button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -163,6 +177,21 @@ const ExamConfirmation = ({ onBack }) => {
           <Dialog.Description className="text-gray-400 mb-6">
             Do you want to set the paper pattern manually or generate it using AI?
           </Dialog.Description>
+
+          {/* Chapters Input Field */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Enter Chapters (comma-separated):
+            </label>
+            <input
+              type="text"
+              className="w-full p-2 border rounded-lg bg-gray-700 text-white focus:outline-none focus:border-indigo-500"
+              placeholder="e.g., Chapter 1, Chapter 2, Chapter 3"
+              value={chapters}
+              onChange={(e) => setChapters(e.target.value)}
+            />
+          </div>
+
           <div className="flex justify-end space-x-4">
             <motion.button
               whileHover={{ scale: 1.05 }}
