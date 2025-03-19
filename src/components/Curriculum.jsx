@@ -13,12 +13,47 @@ const CurriculumPage = () => {
   const [selectedBook, setSelectedBook] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Extract teacherId from the URL
+  const [pendingCurriculums, setPendingCurriculums] = useState([]); // State for pending curriculums
   const queryParams = new URLSearchParams(location.search);
   const teacherId = queryParams.get("teacherId");
 
-  // Fetch subjects, classes, books, and assigned books
+const fetchPendingCurriculums = async () => {
+
+  // Fetch all subjects and classes taught by the teacher
+  const subjectsRef = collection(db, "teachers", teacherId, "subjects");
+  const subjectsSnapshot = await getDocs(subjectsRef);
+  const subjectsData = subjectsSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+
+  // Fetch all curriculum documents for the teacher
+  const curriculumRef = collection(db, `teachers/${teacherId}/curriculum`);
+  const curriculumSnapshot = await getDocs(curriculumRef);
+  const curriculumData = curriculumSnapshot.docs.map((doc) => doc.data());
+
+  // Identify pending curriculums
+  const pending = [];
+  subjectsData.forEach((subject) => {
+    subject.classes.forEach((classId) => {
+      const isAssigned = curriculumData.some(
+        (curriculum) =>
+          curriculum.subject === subject.subject && curriculum.class === classId
+      );
+      if (!isAssigned) {
+        pending.push({ subject: subject.subject, class: classId });
+      }
+    });
+  });
+
+  setPendingCurriculums(pending);
+};
+
+useEffect(() => {
+  fetchPendingCurriculums();
+}, [teacherId]);
+
+  
   useEffect(() => {
     const fetchData = async () => {
       // Fetch subjects taught by the teacher
@@ -95,8 +130,15 @@ const CurriculumPage = () => {
       }
       updatedAssignedBooks[selectedSubject][selectedClass] = { bookId: selectedBook, docId: docRef.id };
       setAssignedBooks(updatedAssignedBooks);
+// Update the pending curriculums list
+setPendingCurriculums((prev) =>
+  prev.filter(
+    (curriculum) =>
+      !(curriculum.subject === selectedSubject && curriculum.class === selectedClass)
+  )
+);
 
-      alert("Book assigned successfully!");
+alert("Book assigned successfully!");
     } catch (error) {
       console.error("Error assigning book:", error);
       alert("Failed to assign book.");
@@ -257,7 +299,31 @@ const CurriculumPage = () => {
             )}
           </tbody>
         </table>
+        
       </div>
+      <div className="mt-8">
+  <h2 className="text-2xl font-semibold text-white mb-4">Pending Curriculums</h2>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {pendingCurriculums.map(({ subject, class: classId }, index) => (
+      <div
+        key={index}
+        className="p-4 bg-gray-800 rounded-lg shadow-lg"
+      >
+        <h3 className="text-white font-medium">{subject}</h3>
+        <p className="text-gray-400">Class: {classId}</p>
+        <button
+          onClick={() => {
+            setSelectedSubject(subject);
+            setSelectedClass(classId);
+          }}
+          className="mt-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-all duration-300"
+        >
+          Assign Book
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
     </div>
   );
 };

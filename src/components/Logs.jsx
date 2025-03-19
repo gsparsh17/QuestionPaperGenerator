@@ -3,6 +3,8 @@ import { getDoc, doc, updateDoc, collection, addDoc, getDocs } from "firebase/fi
 import { db } from "../firebaseConfig";
 import { useLocation } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 
 // Set the worker path for pdfjsLib
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -15,6 +17,8 @@ const LogPage = () => {
   const [bookContent, setBookContent] = useState("");
   const [editing, setEditing] = useState(false);
   const [dailyLogs, setDailyLogs] = useState({}); // Stores daily logs fetched from Firestore
+  const [calendarDate, setCalendarDate] = useState(new Date()); // Calendar state
+  const [selectedDay, setSelectedDay] = useState(null); // Selected day for updating logs
   const location = useLocation();
 
   // Extract teacherId, subject, class, and curriculumDocId from the URL
@@ -194,22 +198,6 @@ const LogPage = () => {
     }
   };
 
-  // Update the generated log
-  const updateGeneratedLog = async () => {
-    if (!generatedLog) return;
-
-    try {
-      const curriculumDoc = doc(db, `teachers/${teacherId}/curriculum`, curriculumDocId);
-      await updateDoc(curriculumDoc, { generatedLog });
-
-      setEditing(false); // Exit edit mode
-      alert("Log updated successfully!");
-    } catch (error) {
-      console.error("Error updating log:", error);
-      alert("Failed to update log.");
-    }
-  };
-
   // Update daily log for a specific week and day
   const updateDailyLog = async (weekIndex, dayIndex) => {
     const logKey = `${weekIndex}-${dayIndex}`;
@@ -276,188 +264,93 @@ const LogPage = () => {
     }
   };
 
-  // Render the generated log
+  // Render the generated log in a tabular form
   const renderGeneratedLog = () => {
     if (!generatedLog) return null;
 
     return (
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
         <h3 className="text-2xl font-bold text-white mb-4">Generated Log</h3>
-        <div className="text-gray-400">
-          <h4 className="text-lg font-semibold mb-2">Weekly Plan</h4>
-          {generatedLog.weeklyPlan?.map((week, weekIndex) => (
-            <div key={weekIndex} className="mb-6 p-4 bg-gray-700 rounded-lg">
-              <p className="text-lg font-medium text-white">Week {week.week}</p>
-              {editing ? (
-                <>
-                  <label className="block text-white">Topics:</label>
-                  <input
-                    type="text"
-                    value={week.topics.join(", ")}
-                    onChange={(e) =>
-                      handleLogChange("weeklyPlan", e.target.value.split(", "), weekIndex, "topics")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                  <label className="block text-white mt-4">Targets:</label>
-                  <input
-                    type="text"
-                    value={week.targets}
-                    onChange={(e) =>
-                      handleLogChange("weeklyPlan", e.target.value, weekIndex, "targets")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                  <label className="block text-white mt-4">Homework:</label>
-                  <input
-                    type="text"
-                    value={week.homework}
-                    onChange={(e) =>
-                      handleLogChange("weeklyPlan", e.target.value, weekIndex, "homework")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                  <label className="block text-white mt-4">Deadline:</label>
-                  <input
-                    type="text"
-                    value={week.deadline}
-                    onChange={(e) =>
-                      handleLogChange("weeklyPlan", e.target.value, weekIndex, "deadline")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                </>
-              ) : (
-                <>
-                  <p><strong>Topics:</strong> {Array.isArray(week.topics) ? week.topics.join(", ") : "No topics available"}</p>
-                  <p><strong>Targets:</strong> {week.targets || "No targets available"}</p>
-                  <p><strong>Homework:</strong> {week.homework || "No homework available"}</p>
-                  <p><strong>Deadline:</strong> {week.deadline || "No deadline available"}</p>
-                </>
-              )}
-            </div>
-          ))}
-          <h4 className="text-lg font-semibold mb-2">Monthly Targets</h4>
-          {generatedLog.monthlyTargets?.map((month, monthIndex) => (
-            <div key={monthIndex} className="mb-6 p-4 bg-gray-700 rounded-lg">
-              <p className="text-lg font-medium text-white">{month.month}</p>
-              {editing ? (
-                <>
-                  <label className="block text-white">Targets:</label>
-                  <input
-                    type="text"
-                    value={month.targets}
-                    onChange={(e) =>
-                      handleLogChange("monthlyTargets", e.target.value, monthIndex, "targets")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                  <label className="block text-white mt-4">Progress Summary:</label>
-                  <input
-                    type="text"
-                    value={month.progressSummary}
-                    onChange={(e) =>
-                      handleLogChange("monthlyTargets", e.target.value, monthIndex, "progressSummary")
-                    }
-                    className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                  />
-                </>
-              ) : (
-                <>
-                  <p><strong>Targets:</strong> {month.targets || "No targets available"}</p>
-                  <p><strong>Progress Summary:</strong> {month.progressSummary || "No progress summary available"}</p>
-                </>
-              )}
-            </div>
-          ))}
-          <h4 className="text-lg font-semibold mb-2">Mid-Term Deadlines</h4>
-          <div className="p-4 bg-gray-700 rounded-lg">
-            {editing ? (
-              <>
-                <label className="block text-white">Topics to Complete:</label>
-                <input
-                  type="text"
-                  value={generatedLog.midTermDeadlines?.topicsToComplete.join(", ")}
-                  onChange={(e) =>
-                    handleLogChange("midTermDeadlines", { ...generatedLog.midTermDeadlines, topicsToComplete: e.target.value.split(", ") }, null, "")
-                  }
-                  className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                />
-                <label className="block text-white mt-4">Deadline:</label>
-                <input
-                  type="text"
-                  value={generatedLog.midTermDeadlines?.deadline}
-                  onChange={(e) =>
-                    handleLogChange("midTermDeadlines", { ...generatedLog.midTermDeadlines, deadline: e.target.value }, null, "")
-                  }
-                  className="w-full bg-gray-600 text-white p-2 rounded-lg mt-2"
-                />
-              </>
-            ) : (
-              <>
-                <p><strong>Topics to Complete:</strong> {Array.isArray(generatedLog.midTermDeadlines?.topicsToComplete) ? generatedLog.midTermDeadlines.topicsToComplete.join(", ") : "No topics available"}</p>
-                <p><strong>Deadline:</strong> {generatedLog.midTermDeadlines?.deadline || "No deadline available"}</p>
-              </>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={editing ? updateGeneratedLog : () => setEditing(true)}
-          className="w-full bg-indigo-500 text-white py-2 rounded-lg mt-4 hover:bg-indigo-600 transition-all duration-300"
-        >
-          {editing ? "Save Changes" : "Edit Log"}
-        </button>
+        <table className="w-full bg-gray-700 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="bg-gray-600">
+              <th className="p-3 text-left text-white">Week</th>
+              <th className="p-3 text-left text-white">Topics</th>
+              <th className="p-3 text-left text-white">Targets</th>
+              <th className="p-3 text-left text-white">Homework</th>
+              <th className="p-3 text-left text-white">Deadline</th>
+            </tr>
+          </thead>
+          <tbody>
+            {generatedLog.weeklyPlan?.map((week, weekIndex) => (
+              <tr key={weekIndex} className="border-b border-gray-600">
+                <td className="p-3 text-white">Week {week.week}</td>
+                <td className="p-3 text-gray-400">{week.topics.join(", ")}</td>
+                <td className="p-3 text-gray-400">{week.targets}</td>
+                <td className="p-3 text-gray-400">{week.homework}</td>
+                <td className="p-3 text-gray-400">{week.deadline}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   };
 
-  // Render the daily progress section
+  // Render the calendar with deadlines and holidays
+  const renderCalendar = () => {
+    const deadlines = generatedLog?.weeklyPlan?.map((week) => new Date(week.deadline)) || [];
+
+    return (
+      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h3 className="text-2xl font-bold text-white mb-4">Calendar</h3>
+        <Calendar
+          value={calendarDate}
+          onChange={setCalendarDate}
+          tileClassName={({ date }) => {
+            const isDeadline = deadlines.some((deadline) => deadline.toDateString() === date.toDateString());
+            return isDeadline ? "bg-red-500 text-white rounded-full" : null;
+          }}
+        />
+      </div>
+    );
+  };
+
+  // Render the daily progress section with a filter/search bar
   const renderDailyProgress = () => {
     return (
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-white mb-4">Daily Progress</h2>
-        {weeklyStructure.map((week, weekIndex) => (
-          <div key={weekIndex} className="mb-8">
-            <h3 className="text-xl font-semibold text-white mb-4">Week {weekIndex + 1}</h3>
-            <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
-              <thead>
-                <tr className="bg-gray-700">
-                  <th className="p-3 text-left text-white">Day</th>
-                  <th className="p-3 text-left text-white">Log</th>
-                  <th className="p-3 text-left text-white">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-              {week.logs.map((log, dayIndex) => {
-                  const logKey = `${weekIndex}-${dayIndex}`;
-                  const savedLog = dailyLogs[logKey] || "";
-
-                  return (
-                    <tr key={dayIndex} className="border-b border-gray-700">
-                      <td className="p-3 text-white">Day {dayIndex + 1}</td>
-                      <td className="p-3 text-gray-400">{savedLog}</td>
-                      <td className="p-3">
-                        <input
-                          type="text"
-                          value={dailyLog}
-                          onChange={(e) => setDailyLog(e.target.value)}
-                          className="w-full bg-gray-700 text-white p-2 rounded-lg"
-                          placeholder="Update daily log"
-                        />
-                        <button
-                          onClick={() => updateDailyLog(weekIndex, dayIndex)}
-                          className="w-full bg-indigo-500 text-white py-2 rounded-lg mt-2 hover:bg-indigo-600 transition-all duration-300"
-                        >
-                          Update Log
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search by day (e.g., Day 1, Day 2)"
+            value={selectedDay ? `Day ${selectedDay + 1}` : ""}
+            onChange={(e) => {
+              const day = parseInt(e.target.value.replace("Day ", "")) - 1;
+              setSelectedDay(day >= 0 && day < 7 ? day : null);
+            }}
+            className="w-full p-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        {selectedDay !== null && (
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold text-white mb-4">Day {selectedDay + 1}</h3>
+            <textarea
+              value={dailyLog}
+              onChange={(e) => setDailyLog(e.target.value)}
+              className="w-full p-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Update daily log"
+              rows={4}
+            />
+            <button
+              onClick={() => updateDailyLog(0, selectedDay)} // Assuming weekIndex is 0 for simplicity
+              className="w-full bg-indigo-500 text-white py-2 rounded-lg mt-4 hover:bg-indigo-600 transition-all duration-300"
+            >
+              Update Log
+            </button>
           </div>
-        ))}
+        )}
       </div>
     );
   };
@@ -466,23 +359,30 @@ const LogPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black py-8 px-4 sm:px-6 lg:px-8">
       <h1 className="text-4xl font-bold text-white mb-8 text-center">Log Page</h1>
 
-      {/* Log Generator Section */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-white mb-4">Log Generator</h2>
-        {generatedLog ? (
-          renderGeneratedLog()
-        ) : (
-          <button
-            onClick={generateLog}
-            disabled={loading}
-            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all duration-300"
-          >
-            {loading ? "Generating..." : "Generate Log"}
-          </button>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Log Generator Section */}
+        <div className="col-span-2">
+          <h2 className="text-2xl font-semibold text-white mb-4">Log Generator</h2>
+          {generatedLog ? (
+            renderGeneratedLog()
+          ) : (
+            <button
+              onClick={generateLog}
+              disabled={loading}
+              className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all duration-300"
+            >
+              {loading ? "Generating..." : "Generate Log"}
+            </button>
+          )}
+        </div>
+
+        {/* Calendar Section */}
+        <div className="col-span-1">
+          {renderCalendar()}
+        </div>
       </div>
 
-      {/* Daily Progress Update Section */}
+      {/* Daily Progress Section */}
       {renderDailyProgress()}
     </div>
   );

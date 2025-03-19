@@ -169,7 +169,7 @@ const TeacherDashboard = () => {
 >
   <div className="flex flex-col items-center">
     <FaBook className="text-4xl text-purple-400 mb-4" />
-    <h3 className="text-xl font-semibold text-white">Manage Curriculum</h3>
+    <h3 className="text-xl font-semibold text-white">Set Curriculum</h3>
   </div>
 </motion.button>
 <motion.button
