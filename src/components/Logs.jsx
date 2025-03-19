@@ -38,12 +38,55 @@ const LogPage = () => {
   const location = useLocation();
 
   const [ddailyLogs, setddailyLogs] = useState([]); // Store all daily logs
+  const [subjects, setSubjects] = useState([]); 
+  const [classes, setClasses] = useState([]);
+  
   const [newLog, setNewLog] = useState({ subject: "", class: "", week: "", day: "", log: "" }); // New log data
   const [addingNewLog, setAddingNewLog] = useState(false); 
-
-  // Extract teacherId, subject, class, and curriculumDocId from the URL
   const queryParams = new URLSearchParams(location.search);
   const teacherId = queryParams.get("teacherId");
+  useEffect(() => {
+      const fetchData = async () => {
+        // Fetch subjects taught by the teacher
+        const subjectsRef = collection(db, "teachers", teacherId, "subjects");
+        const subjectsSnapshot = await getDocs(subjectsRef);
+        const subjectsData = subjectsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setSubjects(subjectsData);
+      };
+  
+      fetchData();
+    }, [teacherId]);
+
+    const [selectedSubject, setSelectedSubject] = useState("");
+    useEffect(() => {
+        const fetchClassesForSubject = async () => {
+          if (!selectedSubject) return;
+    
+          const subjectDoc = subjects.find((subject) => subject.subject === selectedSubject);
+          if (subjectDoc) {
+            setClasses(subjectDoc.classes || []);
+          }
+        };
+    
+        fetchClassesForSubject();
+      }, [selectedSubject, subjects]);
+    
+      useEffect(() => {
+        // Example Data
+        setSubjects([
+          { id: 1, subject: "Math" },
+        ]);
+      
+        setClasses([
+          { id: 1, className: "Class A" },
+        ]);
+      }, []);
+  // Extract teacherId, subject, class, and curriculumDocId from the URL
+  
+  
   const subject = queryParams.get("subject");
   const classId = queryParams.get("class");
   const curriculumDocId = queryParams.get("curriculumDocId");
@@ -574,22 +617,37 @@ const LogPage = () => {
               {newRows.map((row, index) => (
                 <tr key={`new-${index}`} className="border-b border-gray-600">
                   <td className="p-3">
-                    <input
-                      type="text"
-                      placeholder="Subject"
+                    
+                  <select
                       value={row.subject}
                       onChange={(e) => handleInputChange(e, index, "subject")}
                       className="w-full p-2 bg-gray-700 text-white rounded-lg"
-                    />
+                    >
+                      <option value="">Select Subject</option>
+                      {subjects.length > 0 ? (
+                        subjects.map((subj) => (
+                          <option key={subj.id} value={subj.subject}>{subj.subject}</option>
+                        ))
+                      ) : (
+                        <option disabled>No subjects available</option>
+                      )}
+                    </select>
                   </td>
                   <td className="p-3">
-                    <input
-                      type="text"
-                      placeholder="Class"
+                  <select
                       value={row.class}
                       onChange={(e) => handleInputChange(e, index, "class")}
                       className="w-full p-2 bg-gray-700 text-white rounded-lg"
-                    />
+                    >
+                      <option value="">Select Class</option>
+                      {classes.length > 0 ? (
+                        classes.map((cls) => (
+                          <option key={cls.id} value={cls.className}>{cls.className}</option>
+                        ))
+                      ) : (
+                        <option disabled>No classes available</option>
+                      )}
+                    </select>
                   </td>
                   <td className="p-3">
                     <input
