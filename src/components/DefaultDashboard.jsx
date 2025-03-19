@@ -40,7 +40,7 @@ const DefaultDashboard = () => {
       <h2 className="text-3xl font-bold mb-8 text-slate-100">Dashboard Overview</h2>
 
       {/* Navigation Buttons */}
-      <div className="flex space-x-4 mb-8">
+      <div className="flex flex-wrap gap-4 mb-8">
         <button
           onClick={() => setActiveSection("dashboard")}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200"
@@ -69,7 +69,7 @@ const DefaultDashboard = () => {
 
       {/* Render Active Section */}
       {activeSection === "dashboard" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Stats Cards */}
           <div className="bg-gradient-to-br from-blue-600 to-blue-500 p-6 rounded-lg text-white hover:shadow-2xl transition-shadow duration-300">
             <div className="flex items-center mb-4">
