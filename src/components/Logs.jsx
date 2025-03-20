@@ -51,6 +51,8 @@ const LogPage = () => {
   const [addingNewLog, setAddingNewLog] = useState(false);
   const queryParams = new URLSearchParams(location.search);
   const teacherId = queryParams.get("teacherId");
+  const [curriculumRows, setCurriculumRows] = useState([]);
+  const [savedCurriculumRows, setSavedCurriculumRows] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,6 +67,29 @@ const LogPage = () => {
     };
 
     fetchData();
+  }, [teacherId]);
+
+  useEffect(() => {
+    const fetchSavedCurriculumRows = async () => {
+      if (!teacherId) return;
+
+      try {
+        const curriculumCollection = collection(
+          db,
+          `teachers/${teacherId}/manual_curriculum`
+        );
+        const curriculumSnapshot = await getDocs(curriculumCollection);
+        const savedRows = curriculumSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setSavedCurriculumRows(savedRows);
+      } catch (error) {
+        console.error("Error fetching saved curriculum rows:", error);
+      }
+    };
+
+    fetchSavedCurriculumRows();
   }, [teacherId]);
 
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -449,7 +474,7 @@ const LogPage = () => {
     setNewRows(newRows.filter((_, i) => i !== index));
   };
 
-  const [curriculumRows, setCurriculumRows] = useState([]);
+
   const handleAddcurrRow = () => {
     setCurriculumRows([
       ...curriculumRows,
@@ -457,14 +482,14 @@ const LogPage = () => {
     ]);
   };
 
-  // Handle input changes
+  // Handle input changes for curriculum rows
   const handleInputcurrChange = (e, index, field) => {
     const updatedRows = [...curriculumRows];
     updatedRows[index][field] = e.target.value;
     setCurriculumRows(updatedRows);
   };
 
-  // Save row to Firestore
+  // Save a single row to Firestore
   const savecurrRow = async (index) => {
     const row = curriculumRows[index];
     if (!teacherId) {
@@ -477,12 +502,20 @@ const LogPage = () => {
         db,
         `teachers/${teacherId}/manual_curriculum`
       );
-
-      await addDoc(curriculumCollection, {
+      const docRef = await addDoc(curriculumCollection, {
         ...row,
         teacherId,
         timestamp: new Date().toISOString(),
       });
+
+      // Add the saved row to the savedCurriculumRows state
+      setSavedCurriculumRows((prevRows) => [
+        ...prevRows,
+        { id: docRef.id, ...row },
+      ]);
+
+      // Remove the row from the curriculumRows state
+      setCurriculumRows(curriculumRows.filter((_, i) => i !== index));
 
       alert("Row saved successfully!");
     } catch (error) {
@@ -491,7 +524,7 @@ const LogPage = () => {
     }
   };
 
-  // Save entire curriculum to Firestore
+  // Save the entire curriculum to Firestore
   const saveCurriculum = async () => {
     if (!teacherId) {
       alert("Teacher ID is missing.");
@@ -515,13 +548,21 @@ const LogPage = () => {
 
       alert("Curriculum saved successfully!");
       setCurriculumRows([]); // Clear the rows after saving
+
+      // Fetch the updated saved curriculum rows
+      const curriculumSnapshot = await getDocs(curriculumCollection);
+      const savedRows = curriculumSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setSavedCurriculumRows(savedRows);
     } catch (error) {
       console.error("Error saving curriculum:", error);
       alert("Failed to save curriculum.");
     }
   };
 
-  // Remove row
+  // Remove a row from the curriculum table
   const removecurrRow = (index) => {
     const updatedRows = curriculumRows.filter((_, i) => i !== index);
     setCurriculumRows(updatedRows);
@@ -533,7 +574,7 @@ const LogPage = () => {
 
     return (
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h3 className="text-2xl font-bold text-white mb-4">Generated Log</h3>
+        <h3 className="text-2xl font-bold text-white mb-4">Generated Curriculum Assistant</h3>
         <table className="w-full bg-gray-700 rounded-lg">
           <thead>
             <tr className="bg-gray-600">
@@ -690,8 +731,69 @@ const LogPage = () => {
             </tr>
           </thead>
           <tbody>
+          {curriculumRows.map((row, index) => (
+              <tr key={`unsaved-${index}`} className="border-b border-gray-600">
+                <td className="p-3">
+                  <input
+                    type="date"
+                    value={row.startDate}
+                    onChange={(e) => handleInputcurrChange(e, index, "startDate")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="date"
+                    value={row.endDate}
+                    onChange={(e) => handleInputcurrChange(e, index, "endDate")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Topic"
+                    value={row.topic}
+                    onChange={(e) => handleInputcurrChange(e, index, "topic")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Target"
+                    value={row.target}
+                    onChange={(e) => handleInputcurrChange(e, index, "target")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3">
+                  <input
+                    type="text"
+                    placeholder="Homework"
+                    value={row.homework}
+                    onChange={(e) => handleInputcurrChange(e, index, "homework")}
+                    className="w-full p-2 bg-gray-700 text-white rounded-lg"
+                  />
+                </td>
+                <td className="p-3 flex space-x-2">
+                  <button
+                    onClick={() => savecurrRow(index)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition duration-300"
+                  >
+                    <FaSave className="mr-2" /> Save
+                  </button>
+                  <button
+                    onClick={() => removecurrRow(index)}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-red-600 transition duration-300"
+                  >
+                    <FaTrash className="mr-2" /> Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
             {/* Curriculum Rows (Editable) */}
-            {curriculumRows.map((row, index) => (
+            {savedCurriculumRows.map((row, index) => (
               <tr key={index} className="border-b border-gray-600">
                 <td className="p-3">
                   <input
@@ -754,7 +856,7 @@ const LogPage = () => {
             ))}
 
             {/* No Data Message */}
-            {curriculumRows.length === 0 && (
+            {savedCurriculumRows.length === 0 && (
               <tr>
                 <td className="p-3 text-white text-center" colSpan="6">
                   No curriculum entries available.
