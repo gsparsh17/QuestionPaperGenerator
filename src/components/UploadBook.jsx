@@ -5,10 +5,10 @@ import AWS from "aws-sdk";
 import { useNavigate } from "react-router-dom";
 
 AWS.config.update({
-  region: "ap-south-1",
+  region: process.env.REACT_APP_AWS_REGION,
   credentials: {
-    accessKeyId: "AKIAU5LH5V33T3BVDRJA",
-    secretAccessKey: "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",
+    accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
   },
 });
 
